@@ -124,6 +124,7 @@ func (client *Client) Run() {
 	// Start the server on port 8080
 
 	log.Println("Starting server on port: ", port)
+	log.Printf("Visit Page on: http://localhost:%d/", port)
 	// err := http.ListenAndServe(":8082", nil)
 	err = http.ListenAndServe(portAddr, nil)
 	if err != nil {
