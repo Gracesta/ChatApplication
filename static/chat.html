@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Chat Application</title>
+	<style>
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+		body {
+			font-family: Arial, sans-serif;
+			background-color: #f1f1f1;
+			padding: 20px;
+		}
+		.container {
+			max-width: 1000px;
+			margin: auto;
+			background-color: #fff;
+			border-radius: 5px;
+			box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+			padding: 20px;
+			display: flex;
+			flex-direction: column;
+			height: 500px;
+		}
+		h1 {
+			text-align: center;
+			margin-bottom: 20px;
+		}
+		.chat-window {
+			flex-grow: 1;
+			background-color: #f9f9f9;
+			padding: 10px;
+			overflow-y: scroll;
+			display: flex;
+			flex-direction: column;
+		}
+		.chat-bubble {
+			margin-bottom: 10px;
+			padding: 10px;
+			border-radius: 5px;
+			max-width: 80%;
+			word-wrap: break-word;
+			position: relative;
+		}
+		.you-bubble {
+			background-color: #dcf8c6;
+			align-self: flex-end;
+		}
+		.me-bubble {
+			background-color: #fff;
+			align-self: flex-start;
+		}
+		.incoming-bubble:before {
+			content: "";
+			position: absolute;
+			top: 50%;
+			border-style: solid;
+			border-width: 8px 16px 8px 0;
+			border-color: transparent #f9f9f9;
+			display: block;
+			width: 0;
+			z-index: 1;
+			left: -16px;
+			transform: translateY(-50%);
+		}
+		.outgoing-bubble:before {
+			content: "";
+			position: absolute;
+			top: 50%;
+			border-style: solid;
+			border-width: 8px 0 8px 16px;
+			border-color: transparent #dcf8c6;
+			display: block;
+			width: 0;
+			z-index: 1;
+			right: -16px;
+			transform: translateY(-50%);
+		}
+		form {
+			display: flex;
+			margin-top: 10px;
+		}
+		input[type="text"] {
+			flex-grow: 1;
+			border: none;
+			border-radius: 3px;
+			padding: 10px;
+			font-size: 16px;
+		}
+		button[type="submit"] {
+			background-color: #4CAF50;
+			color: #fff;
+			border: none;
+			border-radius: 3px;
+			padding: 10px 20px;
+			margin-left: 10px;
+			cursor: pointer;
+			font-size: 16px;
+		}
+	</style>
+</head>
+<body>
+  
+	<div class="container">
+	<h1>Chat Application</h1>
+		<div class="chat-window" id="chat-window">
+			<div class="chat-bubble you-bubble outgoing-bubble">
+				<p>Hey there, how's it going?</p>
+			</div>
+			<div class="chat-bubble other-bubble incoming-bubble">
+				<p>Hi there!</p>
+			</div>
+			<div class="chat-bubble other-bubble incoming-bubble">
+				<p>How are you doing?</p>
+			</div>
+			<div class="chat-bubble other-bubble incoming-bubble">
+				<p>What's new?</p>
+			</div>
+			<div class="chat-bubble other-bubble incoming-bubble">
+				<p>Did you catch the game last night?</p>
+			</div>
+		</div>
+		<!-- Process chatting message here -->
+		<form id="message-form" action="/send-message" method="POST">
+			<input type="text" id="message-input" name = "input_message" placeholder="Type your message...">
+			<button type="submit">Send</button>
+		</form>
+	</div>
+	<script src="chatScript.js"></script>
+</body>
+</html>

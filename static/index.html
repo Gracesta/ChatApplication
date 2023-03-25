@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        /* Center the login form */
+        #login-form {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        /* Style the login form inputs */
+        #login-form input {
+            display: block;
+            margin-bottom: 10px;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        /* Style the login form submit button */
+        #login-form button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        /* Style the chat application home page */
+        #chat-page {
+            display: none;
+        }
+        /* Show the private chat mode when the corresponding radio button is checked */
+        #private-chat {
+            display: none;
+        }
+        #private-chat-label {
+            display: none;
+        }
+        #private-chat-radio:checked + #private-chat-label + #private-chat {
+            display: block;
+        }
+        /* Show the public chat mode when the corresponding radio button is checked */
+        #public-chat {
+            display: none;
+        }
+        #public-chat-label {
+            display: none;
+        }
+        #public-chat-radio:checked + #public-chat-label + #public-chat {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login page -->
+    <form id="login-form">
+        <input type="text" id="username-input" placeholder="Username">
+        <input type="password" id="password-input" placeholder="Password">
+        <button id="login-button">Login</button>
+    </form>
+    
+    <!-- Chat application home page -->
+    <div id="chat-page">
+      <h1>Welcome to the chat application</h1>
+      <p>Select a chat mode:</p>
+      <button id="private-chat-btn">Private chat</button>
+      <div id="private-chat">
+          <!-- Private chat content goes here -->
+      </div>
+      <a href=".././chat"><img src="grouChat.png" alt="Group Chat" width="150" height="150"></a>
+    </div>
+
+    <!-- JavaScript code to handle the login and chat mode switching -->
+    <script>
+        // Get the login form and the chat page
+        const loginForm = document.getElementById("login-form");
+        const chatPage = document.getElementById("chat-page");
+
+        // Add an event listener to the login form to handle form submission
+        loginForm.addEventListener('submit', event => {
+          // Prevent the default form submission behavior
+          event.preventDefault();
+
+          // Get the username and password from the form
+          const username = loginForm.elements["username-input"].value;
+          const password = loginForm.elements["password-input"].value;
+
+          // TODO: Implement login verification logic here
+          
+          // If login succeeds, show the chat page
+          chatPage.style.display = "block";
+          loginForm.style.display = "none";
+        });
+
+        // Add event listeners to the radio buttons to switch between chat modes
+        const privateChatRadio = document.getElementById("private-chat-radio");
+        const publicChatRadio = document.getElementById("public-chat-radio");
+
+        // privateChatRadio.addEventListener('click', event => {
+        //   // Show the private chat mode and hide the public chat mode
+        //   const privateChatMode = document.getElementById("private-chat");
+        //   const publicChatMode = document.getElementById("public-chat");
+        //   privateChatMode.style.display = "block";
+        //   publicChatMode.style.display = "none";
+        // });
+
+        // publicChatRadio.addEventListener('click', event => {
+        //   // Show the public chat mode and hide the private chat mode
+        //   const privateChatMode = document.getElementById("private-chat");
+        //   const publicChatMode = document.getElementById("public-chat");
+        //   publicChatMode.style.display = "block";
+        //   privateChatMode.style.display = "none";
+        // });
+        const publicChatBtn = document.getElementById('public-chat-btn');
+
+        // Add a click event listener to the public chat button
+        publicChatBtn.addEventListener('click', function() {
+            // Redirect the user to "/chat.html"
+            window.location.href = '/chat.html';
+        });
+      </script>
+</body>
+</html>
