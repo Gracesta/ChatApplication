@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
+	"gopkg.in/yaml.v2"
 )
 
 type Client struct {
@@ -22,6 +24,7 @@ type Client struct {
 	flag int
 
 	conn net.Conn
+	db   *sql.DB
 }
 
 func NewClient(ip string, port int) *Client {
@@ -124,7 +127,56 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (client *Client) Run() {
+	// Serve static files on website
 	http.Handle("/", http.FileServer(http.Dir("static")))
+
+	// launch database for client
+	type Config struct {
+		Database struct {
+			Host     string `yaml:"host"`
+			Port     int    `yaml:"port"`
+			User     string `yaml:"user"`
+			Password string `yaml:"password"`
+			Name     string `yaml:"name"`
+		} `yaml:"db"`
+	}
+
+	configFile := "config.yaml"
+
+	file, err := os.Open(configFile)
+	if err != nil {
+		log.Fatalf("Failed to open settings file: %v", err)
+	}
+	defer file.Close()
+
+	var config Config
+	err = yaml.NewDecoder(file).Decode(&config)
+	if err != nil {
+		log.Fatalf("Failed to decode settings: %v", err)
+	}
+
+	// Connect to MySQL database
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/%s",
+		config.Database.User,
+		config.Database.Password,
+		config.Database.Host,
+		config.Database.Port,
+		config.Database.Name))
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	// db, err := sql.Open("mysql", "root:yosuganosora@tcp(localhost:3306)/sql_hr")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	client.db = db
+
+	log.Println("Database launched", db)
+	// rows, err := db.Query("SELECT employee_id, first_name, last_name FROM employees")
+
+	// defer db.Close()
 
 	// Here for login process
 	http.HandleFunc("/login-verif", client.loginVerificationHandler)
@@ -138,9 +190,6 @@ func (client *Client) Run() {
 	// go http.HandleFunc("/send-message", client.handleSendMessage)
 	// // WebSocket endpoint for the chat messages
 	// go http.HandleFunc("/receive-message", client.handleReceivedMessage)
-
-	// Register the SSE endpoint
-	// go http.HandleFunc("/message-stream", client.messageStreamHandler)
 
 	// Get a random available port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -165,20 +214,10 @@ func (client *Client) Run() {
 	}
 }
 
-// type Message struct {
-// 	InputMessage string `json:"input_message"`
-// }
-
-// func (client *Client) messageStreamHandler(w http.ResponseWriter, r *http.Request) {
-// 	fmt.Println("Entered messageStreamHandler")
-// 	// Set headers for SSE
-// 	w.Header().Set("Content-Type", "text/event-stream")
-// 	w.Header().Set("Cache-Control", "no-cache")
-// 	w.Header().Set("Connection", "keep-alive")
-
-// 	// Create a new ticker that ticks every second.
+// func (client *Client) HandleResponse() {
+// 	// handle the message from server
+// 	// Once read message from conn, display it
 // 	buf := make([]byte, 1024)
-
 // 	for {
 // 		n, err := client.conn.Read(buf)
 // 		if err != nil {
@@ -186,45 +225,11 @@ func (client *Client) Run() {
 // 			return
 // 		}
 // 		msg := string(buf[:n])
-// 		fmt.Println("Received data from client.conn in messageStream:", msg)
+// 		fmt.Println("Received data from client.conn:", msg)
 
-// 		// select {
-// 		// case <-r.Context().Done():
-// 		// 	fmt.Println("Connection closed:", r.Context().Err())
-// 		// 	return
-// 		// default:
-// 		// message := []byte("data: " + "Hello, world!" + "\n\n")
-// 		_, err = w.Write([]byte(msg))
-// 		if err != nil {
-// 			fmt.Println("Error writing SSE data:", err)
-// 			return
-// 		}
-// 		flusher, ok := w.(http.Flusher)
-// 		if !ok {
-// 			fmt.Println("Response writer does not support flushing")
-// 			return
-// 		}
-// 		flusher.Flush()
 // 	}
 
 // }
-
-func (client *Client) HandleResponse() {
-	// handle the message from server
-	// Once read message from conn, display it
-	buf := make([]byte, 1024)
-	for {
-		n, err := client.conn.Read(buf)
-		if err != nil {
-			log.Println(err)
-			return
-		}
-		msg := string(buf[:n])
-		fmt.Println("Received data from client.conn:", msg)
-
-	}
-
-}
 
 var serverIp string
 var serverPort int
@@ -233,8 +238,6 @@ func init() {
 	flag.StringVar(&serverIp, "ip", "127.0.0.1", "Server IP")
 	flag.IntVar(&serverPort, "port", 8888, "Server Port")
 }
-
-// var upgrader = websocket.Upgrader{}
 
 func main() {
 	// command line parse
@@ -248,22 +251,10 @@ func main() {
 
 	fmt.Println(">>>>> Link to Server Succedded <<<<<")
 
-	// if client.flag > 0 && client.flag < 4 {
-	// 	client.menu()
-	// } else {
-	// 	fmt.Println("Input number within range")
-	// }
-
-	// go routin for handling message from server
-	// go client.HandleResponse()
-
 	client.Run()
 
 }
 
-/*
-----------------------   Web Browser -----------------------------------------------------
-*/
 func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
 	// Compile the chat template
 	fmt.Println("chatHandler")
@@ -323,46 +314,6 @@ func (client *Client) handleSendMessage(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-// func (client *Client) handleReceivedMessage(w http.ResponseWriter, r *http.Request) {
-
-// 	var data map[string]string
-// 	err := json.NewDecoder(r.Body).Decode(&data)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	// Get the value of the input_message field from the request body
-// 	chatMsg, ok := data["input_message"]
-// 	if !ok {
-// 		http.Error(w, "Missing input_message field in request body", http.StatusBadRequest)
-// 		return
-// 	}
-
-// 	// Do something with the input message, such as send it to other users in the chat
-// 	fmt.Println("Received message from other users:", chatMsg)
-// 	// if len(chatMsg) != 0 {
-// 	// 	sendMsg := []byte(chatMsg)
-// 	// 	_, err := client.conn.Write([]byte(sendMsg))
-// 	// 	if err != nil {
-// 	// 		fmt.Println("client conn.write error: ", err)
-// 	// 	}
-
-// 	// }
-
-// 	// message_backend := "~backend"
-// 	// Send a response back to the client
-// 	response := map[string]string{"status": "ok", "message_backend": chatMsg}
-// 	w.Header().Set("Content-Type", "application/json")
-// 	fmt.Println(response)
-// 	err = json.NewEncoder(w).Encode(response)
-// 	if err != nil {
-// 		fmt.Println("error")
-// 		http.Error(w, err.Error(), http.StatusInternalServerError)
-// 		return
-// 	}
-// }
-
 func (client *Client) SelectUser() {
 
 	// send who to know the user online
@@ -418,41 +369,6 @@ func (client *Client) PrivateChat() {
 		client.SelectUser()
 		fmt.Println(">>>>> Input the name of user who you want chat with (input \"exit\" to exit)")
 		fmt.Scanln(&targetUserName)
-	}
-}
-
-func (client *Client) PublicChat() {
-	var chatMsg string
-	var errBufio error
-	in := bufio.NewReader(os.Stdin)
-
-	fmt.Println(">>>>> Input the message you want to send (input \"exit\" to exit)")
-	chatMsg, errBufio = in.ReadString('\n')
-	if errBufio != nil {
-		fmt.Println("reading string error", errBufio)
-	}
-	// fmt.Scanln(&chatMsg)
-
-	for chatMsg != "exit\r\n" {
-
-		// send message to usre conn to broadcast
-		if len(chatMsg) != 0 {
-			sendMsg := chatMsg
-			_, err := client.conn.Write([]byte(sendMsg))
-			if err != nil {
-				fmt.Println("client conn.write error: ", err)
-				break
-			}
-
-		}
-
-		chatMsg = ""
-		fmt.Println(">>>>> Input the message you want to send (input \"exit\" to exit)")
-		chatMsg, errBufio = in.ReadString('\n')
-		if errBufio != nil {
-			fmt.Println("reading string error", errBufio)
-		}
-		// fmt.Scanln(&chatMsg)
 	}
 }
 
