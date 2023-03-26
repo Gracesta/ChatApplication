@@ -1,15 +1,16 @@
 const messageForm = document.getElementById('message-form');
 const messageInput = document.getElementById('message-input');
 const chatWindow = document.getElementById('chat-window');
+let lastMessageTime = null;
 
-function createBubbleForMessageFromUser(message, user, bubbleOwnerClass, bubbleFromClass){
-  const bubble = document.createElement('div');
-  bubble.classList.add('chat-bubble', bubbleOwnerClass, bubbleFromClass);
-  bubble.innerHTML = `<p><strong>${user}</strong></p><p>${message}</p>`;
-  chatWindow.appendChild(bubble);
-  // Scroll to the bottom of the chat window when a new message is added
-  chatWindow.scrollTop = chatWindow.scrollHeight;
-}
+// function createBubbleForMessageFromUser(message, user, bubbleOwnerClass, bubbleFromClass){
+//   const bubble = document.createElement('div');
+//   bubble.classList.add('chat-bubble', bubbleOwnerClass, bubbleFromClass);
+//   bubble.innerHTML = `<p><strong>${user}</strong></p><p>${message}</p>`;
+//   chatWindow.appendChild(bubble);
+//   // Scroll to the bottom of the chat window when a new message is added
+//   chatWindow.scrollTop = chatWindow.scrollHeight;
+// }
 
 // Get the current port number
 var port = window.location.port;
@@ -18,6 +19,7 @@ var socket = new WebSocket(wsUrl);
 
 // const socket = new WebSocket('ws://localhost:8080/ws');
 
+// Websocket to supervise message from backend
 socket.addEventListener('message', function(event) {
   const message = event.data;
   // Handle incoming message from server
@@ -32,15 +34,17 @@ socket.addEventListener('message', function(event) {
   chatWindow.scrollTop = chatWindow.scrollHeight;
 });
 
-
+// HANDLE the message sent by user: (1) send to backend （2）Repeat this information in chat window
 messageForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = messageInput.value.trim();
+    const timestamp = new Date().toISOString(); // Get current timestamp
 
     // Deal with message input by user
     if (text !== '') {
       const data = {
-        input_message: text
+        input_message: text,
+        timestamp: timestamp
       };
       console.log(data)
       // Handle with sended message from client
@@ -61,11 +65,21 @@ messageForm.addEventListener('submit', (e) => {
           console.log('Response:', data);
           // // Handle the response from the backend here if necessary
         })
-        .catch(error => {
+        .catch(error => { 
           console.error(error);
         });
 
-          
+      console.log(timestamp)
+      const now = new Date();
+      const elapsedTime = lastMessageTime ? now - lastMessageTime : Infinity;
+      if (elapsedTime > 3 * 60 * 1000) {
+        const systemBubble = document.createElement('div');
+        systemBubble.classList.add('system-bubble');
+        systemBubble.innerHTML = `<p>${new Date().toLocaleTimeString()}</p>`;
+        chatWindow.appendChild(systemBubble);
+        lastMessageTime = now;
+      }
+
       // createBubbleForMessageFromUser(text, "You", 'you-bubble', 'outgoing-bubble')
       const bubble = document.createElement('div');
       bubble.classList.add('chat-bubble', 'you-bubble', 'outgoing-bubble');

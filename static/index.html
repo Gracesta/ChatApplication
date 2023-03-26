@@ -88,11 +88,47 @@
           const username = loginForm.elements["username-input"].value;
           const password = loginForm.elements["password-input"].value;
 
+          const data = {
+            username: username,
+            password: password
+        };
           // TODO: Implement login verification logic here
-          
-          // If login succeeds, show the chat page
-          chatPage.style.display = "block";
-          loginForm.style.display = "none";
+          fetch('/login-verif', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+            .then(response => {
+            if (!response.ok) {
+                throw new Error('Failed to send message');
+            }
+            return response.json();
+            })
+            .then(data => {
+                console.log('Response:', data);
+                // alert(data.verification)
+                // Handle the response from the backend here if necessary
+                if(data.verification == "TRUE") {
+                    // Verification succeeded
+                    chatPage.style.display = "block";
+                    loginForm.style.display = "none";
+                }else{
+                    alert("Either username or password incorrect")
+                    return false;
+                }
+            })
+            .catch(error => {
+            console.error(error);
+            });
+        //   // If login succeeds, show the chat page
+        //   if(data.verification == "TRUE"){
+        //     return false
+        //   }
+        //   chatPage.style.display = "block";
+        //   loginForm.style.display = "none";
+        //   return true;
         });
 
         // Add event listeners to the radio buttons to switch between chat modes

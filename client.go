@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
 )
 
@@ -76,37 +77,65 @@ func (client *Client) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ws.Close()
 }
 
+func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
+	var data map[string]string
+	// fmt.Println(r.Body)
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	// fmt.Println("json data", data)
+	// Get the value of the input_message field from the request body
+
+	username, ok := data["username"]
+	password, ok := data["password"]
+	if !ok {
+		http.Error(w, "Missing input_message field in request body", http.StatusBadRequest)
+		return
+	}
+
+	// Verification on login process
+	var verf string
+	if username == "admin" && password == "admin" {
+		verf = "TRUE"
+		// chat application homepage
+		go http.HandleFunc("/chat", client.chatHandler)
+
+		// WebSocket endpoint for the chat messages
+		go http.HandleFunc("/ws", client.handleWebSocket)
+
+		// send message
+		go http.HandleFunc("/send-message", client.handleSendMessage)
+	} else {
+		verf = "FALSE"
+	}
+
+	// TODO: pass data from database to other handlers
+
+	// Send a response back to the client
+	response := map[string]string{"status": "ok", "verification": verf}
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
 func (client *Client) Run() {
-	// for client.flag != 0 {
-	// 	for client.menu() != true {
-	// 		// display menu while input illegal
-	// 	}
+	http.Handle("/", http.FileServer(http.Dir("static")))
 
-	// 	switch client.flag {
-	// 	case 1:
-	// 		client.PublicChat()
-	// 		break
-	// 	case 2:
-	// 		client.PrivateChat()
-	// 		break
-	// 	case 3:
-	// 		client.UpdateName()
-	// 		break
-	// 	}
-	// }
-	// Web browser to listen to user's input
-	// Serve the static files for the frontend
-	go http.Handle("/", http.FileServer(http.Dir("static")))
+	// Here for login process
+	http.HandleFunc("/login-verif", client.loginVerificationHandler)
+	// // chat application homepage
+	// go http.HandleFunc("/chat", client.chatHandler)
 
-	// template
-	go http.HandleFunc("/chat", client.chatHandler)
+	// // WebSocket endpoint for the chat messages
+	// go http.HandleFunc("/ws", client.handleWebSocket)
 
-	// WebSocket endpoint for the chat messages
-	go http.HandleFunc("/ws", client.handleWebSocket)
-
-	// send message
-	go http.HandleFunc("/send-message", client.handleSendMessage)
-
+	// // send message
+	// go http.HandleFunc("/send-message", client.handleSendMessage)
 	// // WebSocket endpoint for the chat messages
 	// go http.HandleFunc("/receive-message", client.handleReceivedMessage)
 
