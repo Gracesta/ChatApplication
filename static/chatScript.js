@@ -27,7 +27,7 @@ socket.addEventListener('message', function(event) {
   const bubble = document.createElement('div');
   const userName = message.split("|")[1]
   const content = message.split("|")[2]
-  bubble.classList.add('chat-bubble', 'them-bubble', 'incoming-bubble');
+  bubble.classList.add('chat-bubble', 'other-bubble', 'incoming-bubble');
   bubble.innerHTML = `<p><strong>${userName}</strong></p><p>${content}</p>`;
   chatWindow.appendChild(bubble);
   // Scroll to the bottom of the chat window when a new message is added

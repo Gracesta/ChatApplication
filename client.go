@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/websocket"
@@ -23,8 +24,9 @@ type Client struct {
 	Name string
 	flag int
 
-	conn net.Conn
-	db   *sql.DB
+	conn    net.Conn
+	db      *sql.DB
+	user_id int
 }
 
 func NewClient(ip string, port int) *Client {
@@ -80,6 +82,18 @@ func (client *Client) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ws.Close()
 }
 
+func checkLogin(db *sql.DB, username, password string) (int, error) {
+	var user_id int
+	err := db.QueryRow("SELECT user_id FROM users WHERE username=? AND password=?", username, password).Scan(&user_id)
+	if err != nil {
+		return user_id, err
+	}
+	if user_id != 0 {
+		return user_id, nil
+	}
+	return user_id, nil
+}
+
 func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
 	var data map[string]string
 	// fmt.Println(r.Body)
@@ -97,10 +111,19 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Missing input_message field in request body", http.StatusBadRequest)
 		return
 	}
+	var user_id int
+
+	// checkLogin function will return 'user_id' and 'error'
+	user_id, err = checkLogin(client.db, username, password)
+	if err != nil {
+		fmt.Println("Failed to login with database: %v", err)
+	}
 
 	// Verification on login process
 	var verf string
-	if username == "admin" && password == "admin" {
+	if user_id != 0 {
+		client.user_id = user_id
+		fmt.Println("Login succeeded, user_id is:", user_id)
 		verf = "TRUE"
 		// chat application homepage
 		go http.HandleFunc("/chat", client.chatHandler)
@@ -167,16 +190,13 @@ func (client *Client) Run() {
 	}
 	defer db.Close()
 
-	// db, err := sql.Open("mysql", "root:yosuganosora@tcp(localhost:3306)/sql_hr")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(5)
+
 	client.db = db
 
 	log.Println("Database launched", db)
-	// rows, err := db.Query("SELECT employee_id, first_name, last_name FROM employees")
-
-	// defer db.Close()
 
 	// Here for login process
 	http.HandleFunc("/login-verif", client.loginVerificationHandler)
@@ -214,23 +234,6 @@ func (client *Client) Run() {
 	}
 }
 
-// func (client *Client) HandleResponse() {
-// 	// handle the message from server
-// 	// Once read message from conn, display it
-// 	buf := make([]byte, 1024)
-// 	for {
-// 		n, err := client.conn.Read(buf)
-// 		if err != nil {
-// 			log.Println(err)
-// 			return
-// 		}
-// 		msg := string(buf[:n])
-// 		fmt.Println("Received data from client.conn:", msg)
-
-// 	}
-
-// }
-
 var serverIp string
 var serverPort int
 
@@ -261,6 +264,7 @@ func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.ParseFiles("./static/chat.html"))
 
 	// Render the template with any necessary data
+	// TODO: load the chat logs in database to chatwindow
 	data := struct {
 		Title string
 	}{
@@ -287,6 +291,8 @@ func (client *Client) handleSendMessage(w http.ResponseWriter, r *http.Request) 
 	// fmt.Println("json data", data)
 	// Get the value of the input_message field from the request body
 	chatMsg, ok := data["input_message"]
+	timestamp, ok := data["timestamp"]
+	fmt.Println(timestamp)
 	if !ok {
 		http.Error(w, "Missing input_message field in request body", http.StatusBadRequest)
 		return
@@ -302,7 +308,8 @@ func (client *Client) handleSendMessage(w http.ResponseWriter, r *http.Request) 
 		}
 
 	}
-
+	// INSERT this message to database
+	// err := db.QueryRow("INSERT chat_logs VALUE ()WHERE user_id = ?", client.user_id)
 	message_backend := "From backend"
 	// Send a response back to the client
 	response := map[string]string{"status": "ok", "message_backend": message_backend}

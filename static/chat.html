@@ -49,7 +49,7 @@
 			background-color: #dcf8c6;
 			align-self: flex-end;
 		}
-		.me-bubble {
+		.other-bubble {
 			background-color: #fff;
 			align-self: flex-start;
 		}
@@ -66,16 +66,18 @@
 			justify-content: center;
 			align-items: center;
 		}
-		/* .centered-bubble {
-			text-align: center;
-		} */
+		.incoming-bubble {
+			background-color: #fff;
+			align-self: flex-start;
+			position: relative;
+		}
 		.incoming-bubble:before {
 			content: "";
 			position: absolute;
 			top: 50%;
 			border-style: solid;
 			border-width: 8px 16px 8px 0;
-			border-color: transparent #f9f9f9;
+			border-color: transparent #fff;
 			display: block;
 			width: 0;
 			z-index: 1;
