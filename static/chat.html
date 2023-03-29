@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta charset="UTF-8">
-	<title>Chat Application</title>
+	<title>Group Chat</title>
 	<style>
 		* {
 			box-sizing: border-box;
@@ -125,7 +125,17 @@
 	<div class="container">
 	<h1>Chat Application</h1>
 		<div class="chat-window" id="chat-window">
-			<div class="chat-bubble you-bubble outgoing-bubble">
+			{{range .Chatlogs}}
+				<div class="system-bubble">
+					<p>{{.Timestamp}}</p>
+					<!-- {{.Username}} said "{{.Content}}" at {{.Timestamp}} -->
+				</div>
+				<div class="chat-bubble you-bubble incoming-bubble">
+					<p><strong>{{.Username}}</strong></p><p>{{.Content}}</p>
+					<!-- {{.Username}} said "{{.Content}}" at {{.Timestamp}} -->
+				</div>
+			{{end}}
+			<!-- <div class="chat-bubble you-bubble outgoing-bubble">
 				<p>Hey there, how's it going?</p>
 			</div>
 			<div class="chat-bubble other-bubble incoming-bubble">
@@ -139,7 +149,7 @@
 			</div>
 			<div class="chat-bubble other-bubble incoming-bubble">
 				<p>Did you catch the game last night?</p>
-			</div>
+			</div> -->
 		</div>
 		<!-- Process chatting message here -->
 		<form id="message-form" action="/send-message" method="POST">

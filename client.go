@@ -258,6 +258,42 @@ func main() {
 
 }
 
+type Chatlog struct {
+	Username  string
+	Content   string
+	Timestamp string
+}
+
+func loadChatLogsFromDatabase(client *Client) struct {
+	Tile     string
+	Chatlogs []Chatlog
+} {
+	db := client.db
+	rows, err := db.Query("SELECT username, message, timestamp FROM users u JOIN chat_logs cl ON u.user_id = cl.user_id")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+	data := struct {
+		Tile     string
+		Chatlogs []Chatlog
+	}{}
+
+	for rows.Next() {
+		var username, chatlog, timestamp string
+		err := rows.Scan(&username, &chatlog, &timestamp)
+
+		// Check for errors when scanning the query results
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		data.Chatlogs = append(data.Chatlogs, Chatlog{Username: username, Content: chatlog, Timestamp: timestamp})
+	}
+	return data
+}
+
 func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
 	// Compile the chat template
 	fmt.Println("chatHandler")
@@ -265,16 +301,30 @@ func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Render the template with any necessary data
 	// TODO: load the chat logs in database to chatwindow
-	data := struct {
-		Title string
-	}{
-		Title: "Chat Application",
-	}
+	// data := struct {
+	// 	Title    string
+	// 	ChatLogs []string
+	// }{
+	// 	Title:    "Group Chat Application",
+	// 	ChatLogs: []string{"m_1", "m_2"},
+	// }
+	data := loadChatLogsFromDatabase(client)
+
 	err := tmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+func timesStampMySQLFormat(timestamp string) string {
+	t, err := time.Parse(time.RFC3339Nano, timestamp)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Format the time.Time object into MySQL-compatible format
+	mysqlTimestamp := t.Format("2006-01-02 15:04:05")
+	return mysqlTimestamp
 }
 
 func (client *Client) handleSendMessage(w http.ResponseWriter, r *http.Request) {
@@ -309,9 +359,25 @@ func (client *Client) handleSendMessage(w http.ResponseWriter, r *http.Request) 
 
 	}
 	// INSERT this message to database
-	// err := db.QueryRow("INSERT chat_logs VALUE ()WHERE user_id = ?", client.user_id)
-	message_backend := "From backend"
+	stmt, err := client.db.Prepare("INSERT INTO chat_logs(user_id, message, timestamp) VALUES(?, ?, ?)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res, err := stmt.Exec(client.user_id, chatMsg, timesStampMySQLFormat(timestamp))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Print the number of rows affected by the insert statement
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%d row(s) inserted.\n", rowsAffected)
+
 	// Send a response back to the client
+	message_backend := "From backend"
 	response := map[string]string{"status": "ok", "message_backend": message_backend}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
