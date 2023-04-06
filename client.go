@@ -18,6 +18,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// var store = sessions.NewCookieStore([]byte("super-secret-key"))
+// var router = mux.NewRouter()
+
 type Client struct {
 	Ip   string
 	Port int
@@ -123,6 +126,8 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 	var verf string
 	if user_id != 0 {
 		client.user_id = user_id
+		client.Name = username
+		client.UpdateName() // update the name in server side
 		fmt.Println("Login succeeded, user_id is:", user_id)
 		verf = "TRUE"
 		// chat application homepage
@@ -149,10 +154,86 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 	}
 }
 
+type RegisterRequest struct {
+	Username string `json:"username"`
+	// Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func (client *Client) getUserByUsername(username string) (int, error) {
+	var user_id int
+	err := client.db.QueryRow("SELECT user_id FROM users WHERE username = ?", username).Scan(&user_id)
+	return user_id, err
+}
+
+func (client *Client) insertUser(username string, password string) error {
+	// Generate hash from the password
+	hashedPassword := password
+	// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// Insert the new user into the database
+	_, err := client.db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, hashedPassword)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (client *Client) registerHandler(w http.ResponseWriter, r *http.Request) {
+	// Parse the request body into a RegisterRequest struct
+	fmt.Println("registerHandler")
+	var req RegisterRequest
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		fmt.Println("json error")
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	fmt.Println(req.Username, req.Password)
+	// Validate the input
+	if req.Username == "" {
+		http.Error(w, "username cannot be empty", http.StatusBadRequest)
+		return
+	}
+	if req.Password == "" {
+		http.Error(w, "password cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	// Check if the username already exists in the database
+	user_id, err := client.getUserByUsername(req.Username) // user_id =
+	fmt.Println("Userid:", user_id)
+	if err != nil && err != sql.ErrNoRows {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if user_id != 0 {
+		http.Error(w, "username already exists", http.StatusBadRequest)
+		return
+	}
+
+	// Insert the new user into the database
+	err = client.insertUser(req.Username, req.Password)
+	if err != nil {
+		fmt.Println(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Println("Added user into database")
+	// Return a success response
+	resp := map[string]bool{"ok": true}
+	json.NewEncoder(w).Encode(resp)
+}
+
 func (client *Client) Run() {
 	// Serve static files on website
 	http.Handle("/", http.FileServer(http.Dir("static")))
-
+	http.HandleFunc("/register", client.registerHandler)
 	// launch database for client
 	type Config struct {
 		Database struct {
@@ -200,16 +281,6 @@ func (client *Client) Run() {
 
 	// Here for login process
 	http.HandleFunc("/login-verif", client.loginVerificationHandler)
-	// // chat application homepage
-	// go http.HandleFunc("/chat", client.chatHandler)
-
-	// // WebSocket endpoint for the chat messages
-	// go http.HandleFunc("/ws", client.handleWebSocket)
-
-	// // send message
-	// go http.HandleFunc("/send-message", client.handleSendMessage)
-	// // WebSocket endpoint for the chat messages
-	// go http.HandleFunc("/receive-message", client.handleReceivedMessage)
 
 	// Get a random available port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -296,7 +367,7 @@ func loadChatLogsFromDatabase(client *Client) struct {
 
 func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
 	// Compile the chat template
-	fmt.Println("chatHandler")
+	// fmt.Println("chatHandler")
 	tmpl := template.Must(template.ParseFiles("./static/chat.html"))
 
 	// Render the template with any necessary data
@@ -446,8 +517,6 @@ func (client *Client) PrivateChat() {
 }
 
 func (client *Client) UpdateName() bool {
-	fmt.Println("Input the new username you want")
-	fmt.Scanln(&client.Name)
 
 	sendMsg := "rename|" + client.Name + "\n"
 	_, err := client.conn.Write([]byte(sendMsg))

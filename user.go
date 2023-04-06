@@ -98,7 +98,7 @@ func (user *User) DoMessage(msg string) {
 			user.server.mapLock.Unlock()
 
 			user.UserName = newName
-			user.SendMsg("[System annoucement] You already changed your username to:" + user.UserName + "\n")
+			// user.SendMsg("|system annoucement|You already changed your username to:" + user.UserName + "\n")
 		}
 
 	} else if len(msg) > 3 && msg[:3] == "to|" {
