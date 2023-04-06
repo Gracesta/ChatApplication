@@ -1,0 +1,116 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        /* Center the login form */
+        #login-form {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        /* Style the login form inputs */
+        #login-form input {
+            display: block;
+            margin-bottom: 10px;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        /* Style the login form submit button */
+        #login-form button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+        }
+        /* Style the chat application home page */
+        #chat-page {
+            display: none;
+        }
+        /* Show the private chat mode when the corresponding radio button is checked */
+        #private-chat {
+            display: none;
+        }
+        #private-chat-label {
+            display: none;
+        }
+        #private-chat-radio:checked + #private-chat-label + #private-chat {
+            display: block;
+        }
+        /* Show the public chat mode when the corresponding radio button is checked */
+        #public-chat {
+            display: none;
+        }
+        #public-chat-label {
+            display: none;
+        }
+        #public-chat-radio:checked + #public-chat-label + #public-chat {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Register page -->
+    <form id="register-form">
+        <input type="text" id="register-username-input" placeholder="Username">
+        <input type="password" id="register-password-input" placeholder="Password">
+        <input type="password" id="register-confirm-password-input" placeholder="Confirm Password">
+        <button id="register-button">Register</button>
+        <a href="/">Back</a>
+      </form>
+
+    <!-- JavaScript code to handle the login and chat mode switching -->
+    <script>
+    const registerForm = document.getElementById("register-form");
+
+    registerForm.addEventListener('submit', event => {
+    // Prevent the default form submission behavior
+    event.preventDefault();
+
+    // Get the username and password from the form
+    const username = registerForm.elements["register-username-input"].value;
+    const password = registerForm.elements["register-password-input"].value;
+    const confirmPassword = registerForm.elements["register-confirm-password-input"].value;
+
+    // Make sure the password and confirmation password match
+    if (password !== confirmPassword) {
+        alert("Passwords do not match");
+        return;
+    }
+
+    // Send a POST request to register the new user
+    fetch('/register', {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+        Username: username,
+        Password: password
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+        throw new Error('Failed to register user');
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Response:', data);
+        // Handle the response from the backend here if necessary
+        alert('User registered successfully');
+    })
+    .catch(error => {
+        console.error(error);
+        alert('Failed to register user');
+    });
+    });
+    </script>
+</body>
+</html>
