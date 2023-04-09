@@ -122,8 +122,6 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 		verf = "FALSE"
 	}
 
-	// TODO: pass data from database to other handlers
-
 	// Send a response back to the client
 	response := map[string]string{"status": "ok", "verification": verf}
 	w.Header().Set("Content-Type", "application/json")
