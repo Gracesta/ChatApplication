@@ -17,7 +17,6 @@ var port = window.location.port;
 var wsUrl = "ws://" + window.location.hostname + ":" + port + "/ws";
 var socket = new WebSocket(wsUrl);
 
-// const socket = new WebSocket('ws://localhost:8080/ws');
 
 // Websocket to supervise message from backend
 socket.addEventListener('message', function(event) {

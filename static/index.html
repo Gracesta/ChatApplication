@@ -63,7 +63,6 @@
             <a href="register.html">Register</a>
             <button id="login-button">Login</button>
         </div>
-        <!-- <button id="reg-button">Register</button> -->
     </form>
     
     
@@ -71,14 +70,9 @@
     <div id="chat-page">
       <h1>Welcome to the chat application</h1>
       <p>Select a chat mode:</p>
-      <button id="private-chat-btn">Private chat</button>
-      <div id="private-chat">
-          <!-- Private chat content goes here -->
-      </div>
       <a href=".././chat"><img src="grouChat.png" alt="Group Chat" width="150" height="150"></a>
     </div>
 
-    <!-- JavaScript code to handle the login and chat mode switching -->
     <script>
         // Get the login form and the chat page
         const loginForm = document.getElementById("login-form");
@@ -113,7 +107,6 @@
             })
             .then(data => {
                 console.log('Response:', data);
-                // alert(data.verification)
                 // Handle the response from the backend here if necessary
                 if(data.verification == "TRUE") {
                     // Verification succeeded
@@ -127,34 +120,11 @@
             .catch(error => {
             console.error(error);
             });
-        //   // If login succeeds, show the chat page
-        //   if(data.verification == "TRUE"){
-        //     return false
-        //   }
-        //   chatPage.style.display = "block";
-        //   loginForm.style.display = "none";
-        //   return true;
         });
 
         // Add event listeners to the radio buttons to switch between chat modes
         const privateChatRadio = document.getElementById("private-chat-radio");
         const publicChatRadio = document.getElementById("public-chat-radio");
-
-        // privateChatRadio.addEventListener('click', event => {
-        //   // Show the private chat mode and hide the public chat mode
-        //   const privateChatMode = document.getElementById("private-chat");
-        //   const publicChatMode = document.getElementById("public-chat");
-        //   privateChatMode.style.display = "block";
-        //   publicChatMode.style.display = "none";
-        // });
-
-        // publicChatRadio.addEventListener('click', event => {
-        //   // Show the public chat mode and hide the private chat mode
-        //   const privateChatMode = document.getElementById("private-chat");
-        //   const publicChatMode = document.getElementById("public-chat");
-        //   publicChatMode.style.display = "block";
-        //   privateChatMode.style.display = "none";
-        // });
         const publicChatBtn = document.getElementById('public-chat-btn');
 
         // Add a click event listener to the public chat button
