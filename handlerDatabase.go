@@ -25,6 +25,8 @@ func (client *Client) getUserByUsername(username string) (int, error) {
 }
 
 func (client *Client) insertUser(username string, password string) error {
+	/* Insert user into database using username and password*/
+
 	// Generate hash from the password
 	hashedPassword := password
 	// hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
