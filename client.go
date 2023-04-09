@@ -288,18 +288,7 @@ func main() {
 
 func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
 	// Compile the chat template
-	// fmt.Println("chatHandler")
 	tmpl := template.Must(template.ParseFiles("./static/chat.html"))
-
-	// Render the template with any necessary data
-	// TODO: load the chat logs in database to chatwindow
-	// data := struct {
-	// 	Title    string
-	// 	ChatLogs []string
-	// }{
-	// 	Title:    "Group Chat Application",
-	// 	ChatLogs: []string{"m_1", "m_2"},
-	// }
 	data := loadChatLogsFromDatabase(client)
 
 	err := tmpl.Execute(w, data)
