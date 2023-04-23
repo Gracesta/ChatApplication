@@ -17,9 +17,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// var store = sessions.NewCookieStore([]byte("super-secret-key"))
-// var router = mux.NewRouter()
-
 type Client struct {
 	Ip   string
 	Port int
@@ -79,13 +76,11 @@ func (client *Client) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
 	var data map[string]string
-	// fmt.Println(r.Body)
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// fmt.Println("json data", data)
 	// Get the value of the input_message field from the request body
 
 	username, ok := data["username"]
@@ -245,7 +240,7 @@ func (client *Client) Run() {
 	port := listener.Addr().(*net.TCPAddr).Port
 	portAddr := fmt.Sprintf(":%d", port)
 
-	// Start the server on port 8080
+	// Start the server on launched port
 
 	log.Println("Starting server on port: ", port)
 	log.Printf("Visit Page on: http://localhost:%d/", port)
@@ -301,13 +296,11 @@ func (client *Client) handleSendMessage(w http.ResponseWriter, r *http.Request) 
 	fmt.Println("client.handle send message:")
 
 	var data map[string]string
-	// fmt.Println(r.Body)
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// fmt.Println("json data", data)
 	// Get the value of the input_message field from the request body
 	chatMsg, ok := data["input_message"]
 	timestamp, ok := data["timestamp"]
