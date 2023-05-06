@@ -9,7 +9,7 @@ And Following technologies:<br>
 [2023/05/06] Docker compilation added
 
 ## Usage
-# Navigate to Login Page
+### Navigate to Login Page
 Once application compiled and executed correctly (following Implementation Details section), we can check the hint message to navigate to login page for application as follows:
 ```bash
 Starting client on port:  5555
@@ -18,7 +18,7 @@ Starting client on port:  7777
 Visit Page on: http://localhost:7777/
 ```
 Following the message to visit the page to the login page. In Docker, there are two clients are initialized for users to login where the pages are on `http://localhost:5555/` and `http://localhost:7777/`.
-# Login
+### Login
 Before go to chat page, we need to first login. we can also register new account clicking `register` button.<br>
 Notice that there are some initial accounts for us to login (also can be checked in sql scripts):
 
@@ -28,7 +28,7 @@ Notice that there are some initial accounts for us to login (also can be checked
 | john_doe | password123 |
 | jane_doe | password456 | 
 
-# Navigate to Chat Page
+### Navigate to Chat Page
 In homepage, click `Group Chat` mode to navigate to chat page. Now you can chat!
 # Implementation Details
 ## Compile with Docker
