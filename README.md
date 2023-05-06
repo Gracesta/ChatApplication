@@ -9,7 +9,7 @@ And Following technologies:<br>
 [2023/05/06] Docker compilation added
 
 ## Usage
-# Navigate to Chat Application Homepage
+# Navigate to Login Page
 Once application compiled and executed correctly (following Implementation Details section), we can check the hint message to navigate to login page for application as follows:
 ```bash
 Starting client on port:  5555
@@ -28,7 +28,7 @@ Notice that there are some initial accounts for us to login (also can be checked
 | john_doe | password123 |
 | jane_doe | password456 | 
 
-# Chat
+# Navigate to Chat Page
 In homepage, click `Group Chat` mode to navigate to chat page. Now you can chat!
 # Implementation Details
 ## Compile with Docker
