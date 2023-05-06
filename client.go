@@ -249,10 +249,10 @@ func (client *Client) Run() {
 	// log.Printf("Visit Page on: http://localhost:%d/", port)
 	// err = http.ListenAndServe(portAddr, nil)
 
-	port := 9999
+	port := clientPort // clientPort initialized by commandline arugments
 	log.Println("Starting client on port: ", port)
 	log.Printf("Visit Page on: http://localhost:%d/", port)
-	err = http.ListenAndServe(":9999", nil)
+	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 
 	if err != nil {
 		log.Fatal("Failed to start server:", err)
@@ -265,10 +265,12 @@ func (client *Client) Run() {
 
 var serverIp string
 var serverPort int
+var clientPort int
 
 func init() {
 	flag.StringVar(&serverIp, "ip", "127.0.0.1", "Server IP")
 	flag.IntVar(&serverPort, "port", 8888, "Server Port")
+	flag.IntVar(&clientPort, "client_port", 9999, "Client Port")
 }
 
 func main() {

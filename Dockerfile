@@ -16,4 +16,4 @@ COPY . .
 RUN go build -o client .
 
 # Set the command to run when the container starts
-CMD ["./client", "--ip", "server"]
+CMD ["./client", "--ip", "server", "--client_port", "9999"]

@@ -16,13 +16,28 @@ services:
   client:
     # build: .
     image: gracesta/chatapp-go-client
+    entrypoint: ["./client"]
+    command: ["--ip", "server", "--client_port", "7777"]
     ports:
-      - "9999:9999"
+      - "7777:7777"
     depends_on:
       - db
       - server
     links:
       - server
 
+  client_second:
+    # build: .
+    image: gracesta/chatapp-go-client
+    entrypoint: ["./client"]
+    command: ["--ip", "server", "--client_port", "5555"]
+    ports:
+      - "5555:5555"
+    depends_on:
+      - db
+      - server
+    links:
+      - server
+    
 volumes:
   db-data:      
