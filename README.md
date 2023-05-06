@@ -49,7 +49,7 @@ And uncomment following lines to build your own images:
 ```
 ## Compile Locally
 ### Setup for Your Database
-1. Create `config.yaml` in root in the format below:
+1. Edit `config.yaml` in root in the format below (Note that it's different forom that for Docker):
 ```yaml
 db:
   host: localhost
