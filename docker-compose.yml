@@ -1,0 +1,28 @@
+version: "3.9"
+services:
+  db:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: initial-password
+      MYSQL_DATABASE: chat_app
+    volumes:
+      - db-data:/var/lib/mysql
+      - ./scripts:/docker-entrypoint-initdb.d
+  server:
+    # build: ./server
+    image: gracesta/chatapp-go-server
+    ports:
+      - "8888:8888"
+  client:
+    # build: .
+    image: gracesta/chatapp-go-client
+    ports:
+      - "9999:9999"
+    depends_on:
+      - db
+      - server
+    links:
+      - server
+
+volumes:
+  db-data:      
