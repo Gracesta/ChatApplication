@@ -8,6 +8,28 @@ And Following technologies:<br>
 [2023/04/09] First time released to public <br>
 [2023/05/06] Docker compilation added
 
+## Usage
+# Navigate to Chat Application Homepage
+Once application compiled and executed correctly (following Implementation Details section), we can check the hint message to navigate to login page for application as follows:
+```bash
+Starting client on port:  5555
+Visit Page on: http://localhost:5555/
+Starting client on port:  7777
+Visit Page on: http://localhost:7777/
+```
+Following the message to visit the page to the login page. In Docker, there are two clients are initialized for users to login where the pages are on `http://localhost:5555/` and `http://localhost:7777/`.
+# Login
+Before go to chat page, we need to first login. we can also register new account clicking `register` button.<br>
+Notice that there are some initial accounts for us to login (also can be checked in sql scripts):
+
+| Username  | Password | <br>
+| -------- | -------- | -------- |
+| admin | admin |
+| john_doe | password123 |
+| jane_doe | password456 | 
+
+# Chat
+In homepage, click `Group Chat` mode to navigate to chat page. Now you can chat!
 # Implementation Details
 ## Compile with Docker
 In the root where `docker-compose.yml` file exists, excute following command to launch chat application:
