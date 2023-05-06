@@ -9,7 +9,7 @@ And Following technologies:<br>
 [2023/05/06] Docker compilation added
 # Implementation Details
 ## Compile with Docker
-In the root directory where docker-compose.yml file exists, excute following command to launch chat application:
+In the root where `docker-compose.yml` file exists, excute following command to launch chat application:
 ```bash
 docker-compose up 
 ```
