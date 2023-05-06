@@ -5,8 +5,9 @@ And Following technologies:<br>
 `Ajax` (Frontend to backend), `Websocket` (Backend to Frontend) <br>
 
 ## Update
-[2023/04/09] First time released to public
+[2023/04/09] First time released to public <br>
 [2023/05/06] Docker compilation added
+
 # Implementation Details
 ## Compile with Docker
 In the root where `docker-compose.yml` file exists, excute following command to launch chat application:
