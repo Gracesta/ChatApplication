@@ -36,6 +36,8 @@ func NewClient(ip string, port int) *Client {
 	}
 
 	// Link to server
+	// server name
+	// When running on Docker, the "ip" parameter will be set to server container name :"server"
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", ip, port))
 
 	if err != nil {
@@ -232,20 +234,26 @@ func (client *Client) Run() {
 	// Here for login process
 	http.HandleFunc("/login-verif", client.loginVerificationHandler)
 
-	// Get a random available port
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		panic(err)
-	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	portAddr := fmt.Sprintf(":%d", port)
+	// /*	Code for launch random available port for launching client GUI	*/
+	// // Get a random available port
+	// listener, err := net.Listen("tcp", "127.0.0.1:0")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// port := listener.Addr().(*net.TCPAddr).Port
+	// portAddr := fmt.Sprintf(":%d", port)
 
-	// Start the server on launched port
+	// // Start the server on launched port
 
-	log.Println("Starting server on port: ", port)
+	// log.Println("Starting server on port: ", port)
+	// log.Printf("Visit Page on: http://localhost:%d/", port)
+	// err = http.ListenAndServe(portAddr, nil)
+
+	port := 9999
+	log.Println("Starting client on port: ", port)
 	log.Printf("Visit Page on: http://localhost:%d/", port)
-	// err := http.ListenAndServe(":8082", nil)
-	err = http.ListenAndServe(portAddr, nil)
+	err = http.ListenAndServe(":9999", nil)
+
 	if err != nil {
 		log.Fatal("Failed to start server:", err)
 	}

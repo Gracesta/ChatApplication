@@ -120,7 +120,7 @@ func (server *Server) Start() {
 		fmt.Println("socket Listen error:", err)
 		return
 	}
-	fmt.Println("Server launched")
+	fmt.Println("Server launched on ", server.Ip, ":", server.Port)
 	defer Listener.Close()
 
 	for {
