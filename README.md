@@ -22,11 +22,11 @@ Following the message to visit the page to the login page. In Docker, there are 
 Before go to chat page, we need to first login. we can also register new account clicking `register` button.<br>
 Notice that there are some initial accounts for us to login (also can be checked in sql scripts):
 
-| Username  | Password | <br>
-| -------- | -------- | -------- |
-| admin | admin |
-| john_doe | password123 |
-| jane_doe | password456 | 
+| Username  | Password 
+| -------- | -------- 
+| admin | admin 
+| john_doe | password123 
+| jane_doe | password456 
 
 ### Navigate to Chat Page
 In homepage, click `Group Chat` mode to navigate to chat page. Now you can chat!
