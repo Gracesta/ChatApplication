@@ -1,19 +1,12 @@
 # server
 FROM golang:1.19.4
 
-# Set the working directory
 WORKDIR /app/server
 
-
 COPY go.mod go.sum ./
-
-
-
-# Copy the application code
 COPY . .
 
 ENV PORT=8888
-
 EXPOSE 8888
 
 # # Build the application

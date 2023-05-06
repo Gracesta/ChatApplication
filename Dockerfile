@@ -1,6 +1,5 @@
 FROM golang:1.19.4
 
-# Set the working directory
 WORKDIR /app
 
 COPY go.mod go.sum ./
