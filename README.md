@@ -6,8 +6,25 @@ And Following technologies:<br>
 
 ## Update
 [2023/04/09] First time released to public
-
-## Implementation Details
+[2023/05/06] Docker compilation added
+# Implementation Details
+## Compile with Docker
+In the root directory where docker-compose.yml file exists, excute following command to launch chat application:
+```bash
+docker-compose up 
+```
+This will automatically pull the existing images on DockerHub. <br>
+You can also build your own images by editing `docker-compose.yml` file. First comment following codes:
+```yaml
+    L13: image: gracesta/chatapp-go-server
+    L18: image: gracesta/chatapp-go-client
+```
+And uncomment following lines to build your own images:
+```yaml
+    # build: ./server
+    # build: .
+```
+## Compile Locally
 ### Setup for Your Database
 1. Create `config.yaml` in root in the format below:
 ```yaml
