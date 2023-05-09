@@ -124,7 +124,7 @@ func (server *Server) Start() {
 	defer Listener.Close()
 
 	for {
-		conn, err := Listener.Accept()
+		conn, err := Listener.Accept() // net.Dial
 		if err != nil {
 			fmt.Println("Listener accept error", err)
 			continue

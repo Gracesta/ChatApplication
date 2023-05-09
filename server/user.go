@@ -32,11 +32,12 @@ func NewUser(conn net.Conn, server *Server) *User {
 
 // Listen user's channel, send message once received
 func (user *User) ListenUserMessage() {
+	// msg format: [user.UserAddr + "|" + user.UserName + "|" + msg]
 	for msg := range user.userChan {
 		// msg := <-user.userChan
 		// Only receive mssages from other users
-		msgAddr := strings.Split(msg, "|")[0]
-		if msgAddr != user.UserAddr {
+		msgOwnerName := strings.Split(msg, "|")[1]
+		if msgOwnerName != user.UserName {
 			user.conn.Write([]byte(msg + "\n"))
 		}
 	}
