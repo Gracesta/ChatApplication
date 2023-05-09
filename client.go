@@ -17,6 +17,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+var mux = http.NewServeMux()
+
 type Client struct {
 	Ip   string
 	Port int
@@ -101,20 +103,31 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 
 	// Verification on login process
 	var verf string
+
 	if user_id != 0 {
 		client.user_id = user_id
 		client.Name = username
 		client.UpdateName() // retrieve username to server from database
 		fmt.Println("Login succeeded, user_id is:", user_id)
 		verf = "TRUE"
+
+		fmt.Println("User mux:", mux)
+
 		// chat application homepage
-		go http.HandleFunc("/chat", client.chatHandler)
+		go mux.HandleFunc("/chat", client.chatHandler)
 
 		// WebSocket endpoint for the chat messages
-		go http.HandleFunc("/ws", client.handleWebSocket)
+		go mux.HandleFunc("/ws", client.handleWebSocket)
 
 		// send message
-		go http.HandleFunc("/send-message", client.handleSendMessage)
+		go mux.HandleFunc("/send-message", client.handleSendMessage)
+
+		// server := &http.Server{
+		// 	Addr:    ":2222",
+		// 	Handler: mux,
+		// }
+		// // Start your server
+		// log.Fatal(server.ListenAndServe())
 	} else {
 		verf = "FALSE"
 	}
@@ -183,9 +196,10 @@ func (client *Client) registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (client *Client) Run() {
+
 	// Serve static files on website
-	http.Handle("/", http.FileServer(http.Dir("static")))
-	http.HandleFunc("/register", client.registerHandler)
+	mux.Handle("/", http.FileServer(http.Dir("static")))
+	mux.HandleFunc("/register", client.registerHandler)
 	// launch database for client
 	type Config struct {
 		Database struct {
@@ -232,7 +246,7 @@ func (client *Client) Run() {
 	log.Println("Database launched", db)
 
 	// Here for login process
-	http.HandleFunc("/login-verif", client.loginVerificationHandler)
+	mux.HandleFunc("/login-verif", client.loginVerificationHandler)
 
 	// /*	Code for launch random available port for launching client GUI	*/
 	// // Get a random available port
@@ -252,11 +266,17 @@ func (client *Client) Run() {
 	port := clientPort // clientPort initialized by commandline arugments
 	log.Println("Starting client on port: ", port)
 	log.Printf("Visit Page on: http://localhost:%d/", port)
-	err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
-
-	if err != nil {
-		log.Fatal("Failed to start server:", err)
+	server := &http.Server{
+		Addr:    ":9999",
+		Handler: mux,
 	}
+	// Start your server
+	log.Fatal(server.ListenAndServe())
+	// err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+
+	// if err != nil {
+	// 	log.Fatal("Failed to start server:", err)
+	// }
 
 	for {
 
