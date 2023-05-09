@@ -18,6 +18,7 @@ import (
 )
 
 var mux = http.NewServeMux()
+var endpointRegistered bool = false
 
 type Client struct {
 	Ip   string
@@ -114,14 +115,16 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 		fmt.Println("User mux:", mux)
 
 		// chat application homepage
-		go mux.HandleFunc("/chat", client.chatHandler)
+		if !endpointRegistered {
+			go mux.HandleFunc("/chat", client.chatHandler)
 
-		// WebSocket endpoint for the chat messages
-		go mux.HandleFunc("/ws", client.handleWebSocket)
+			// WebSocket endpoint for the chat messages
+			go mux.HandleFunc("/ws", client.handleWebSocket)
 
-		// send message
-		go mux.HandleFunc("/send-message", client.handleSendMessage)
-
+			// send message
+			go mux.HandleFunc("/send-message", client.handleSendMessage)
+			endpointRegistered = true
+		}
 		// server := &http.Server{
 		// 	Addr:    ":2222",
 		// 	Handler: mux,
@@ -198,8 +201,8 @@ func (client *Client) registerHandler(w http.ResponseWriter, r *http.Request) {
 func (client *Client) Run() {
 
 	// Serve static files on website
-	mux.Handle("/", http.FileServer(http.Dir("static")))
-	mux.HandleFunc("/register", client.registerHandler)
+	go mux.Handle("/", http.FileServer(http.Dir("static")))
+	go mux.HandleFunc("/register", client.registerHandler)
 	// launch database for client
 	type Config struct {
 		Database struct {
@@ -246,7 +249,7 @@ func (client *Client) Run() {
 	log.Println("Database launched", db)
 
 	// Here for login process
-	mux.HandleFunc("/login-verif", client.loginVerificationHandler)
+	go mux.HandleFunc("/login-verif", client.loginVerificationHandler)
 
 	// /*	Code for launch random available port for launching client GUI	*/
 	// // Get a random available port
@@ -267,11 +270,11 @@ func (client *Client) Run() {
 	log.Println("Starting client on port: ", port)
 	log.Printf("Visit Page on: http://localhost:%d/", port)
 	server := &http.Server{
-		Addr:    ":9999",
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
 	}
 	// Start your server
-	log.Fatal(server.ListenAndServe())
+	go log.Fatal(server.ListenAndServe())
 	// err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 
 	// if err != nil {
