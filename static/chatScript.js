@@ -6,6 +6,9 @@ let lastMessageTime = null;
 const userId = localStorage.getItem('userId');
 console.log("user id:", userId); // Output: myValue
 
+// Scroll to the bottom of the chat window when a new message is added
+chatWindow.scrollTop = chatWindow.scrollHeight;
+
 if (!userId) {
   // User is not logged in, redirect to login page
   window.history.replaceState(null, null, "/");
