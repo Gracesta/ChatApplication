@@ -99,9 +99,9 @@ func (server *Server) Handler(conn net.Conn) {
 		case <-isActive:
 			// user is active, reset the timer
 			// pass
-		case <-time.After(time.Second * 300):
+		case <-time.After(time.Second * 1800):
 			// Not active over time, kick this user
-			user.SendMsg("You're disconected since long time inactive (5 mins)")
+			// user.SendMsg("You're disconected since long time inactive (5 mins)")
 
 			// delete user
 			close(user.userChan)
