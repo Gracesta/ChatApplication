@@ -54,7 +54,7 @@ func loadChatLogsFromDatabase(client_db *sql.DB) struct {
 	Chatlogs []Chatlog
 } {
 	db := client_db
-	rows, err := db.Query("SELECT username, message, timestamp FROM users u JOIN chat_logs cl ON u.user_id = cl.user_id")
+	rows, err := db.Query("SELECT username, message, timestamp FROM users u JOIN chat_logs cl ON u.user_id = cl.user_id ORDER BY cl.timestamp")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -81,6 +81,7 @@ func loadChatLogsFromDatabase(client_db *sql.DB) struct {
 
 func timesStampMySQLFormat(timestamp string) string {
 	t, err := time.Parse(time.RFC3339Nano, timestamp)
+
 	if err != nil {
 		panic(err.Error())
 	}
