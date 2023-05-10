@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -18,18 +19,10 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// type Server struct {
-// 	Ip         string
-// 	Port       int
-// 	serverChan chan string
-
-// 	// mapLock and online user map
-// 	OnlineClientrMap map[string]*Client
-// 	mapLock       sync.RWMutex
-// }
-
-var OnlineClientrMap map[int]*Client
-
+var (
+	OnlineClientrMap map[int]*Client
+	clientMutex      sync.Mutex
+)
 var mux = http.NewServeMux()
 
 // var msgChan chan map[string]string
@@ -69,8 +62,6 @@ func NewClient(ip string, port int) *Client {
 		return nil
 	}
 	client.conn = conn
-	// msgChan = make(chan map[string]string)
-	// client.msgChan = &msgChan
 
 	return client
 }
@@ -92,33 +83,11 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal("error in converting string to int in handlwebsocket")
 	}
+	clientMutex.Lock()
 	OnlineClientrMap[user_id].wsConn = wsConn
-	fmt.Println(OnlineClientrMap[user_id])
-	// user_id, err := strconv.Atoi(r.Header.Get("X-User-Id"))
-	// fmt.Println(user_id)
-	// if err != nil {
-	// 	log.Fatal("string convertion error in websocket")
-	// }
-	// OnlineClientrMap[user_id].wsConn = wsConn
-	// defer wsConn.Close()
-	// Loop to read data from client.conn and send to frontend
-	// for {
-	// 	// Read data from client.conn
-	// 	buf := make([]byte, 1024)
-	// 	n, err := client.conn.Read(buf)
-	// 	if err != nil {
-	// 		break
-	// 	}
-	// 	msg := string(buf[:n])
-	// 	fmt.Println("Receive Message in websocket from user conn:", msg)
+	clientMutex.Unlock()
 
-	// 		// Send data to frontend over WebSocket
-	// 		if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
-	// 			break
-	// 		}
-	// 	}
-	// 	// Close WebSocket connection
-	// 	ws.Close()
+	fmt.Println(OnlineClientrMap[user_id])
 	for {
 
 	}
@@ -152,7 +121,13 @@ func loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
 	var verf string
 
 	if user_id != 0 {
-		// launch websocket and handleSendMessage here?
+		// Check if this user already loggined
+		preClient, exists := OnlineClientrMap[user_id]
+		if exists {
+			preClient.conn.Close()
+			preClient.wsConn.Close()
+		}
+
 		client := NewClient(serverIp, serverPort)
 		fmt.Println(">>>>> Link to Server Succedded <<<<<")
 
@@ -160,7 +135,10 @@ func loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
 		client.Name = username
 		client.UpdateName() // retrieve username to server from database
 
+		clientMutex.Lock()
 		OnlineClientrMap[user_id] = client
+		clientMutex.Unlock()
+
 		fmt.Println("Login succeeded, user_id is:", user_id)
 		verf = "TRUE"
 		go client.Run()
@@ -238,12 +216,37 @@ func (client *Client) RetrieveMessage(msgByte []byte) {
 	}
 }
 
+func getJSTTimeStamp(timestamp string) string {
+	// Parse the timestamp as a time.Time object
+	t, err := time.Parse(time.RFC3339, timestamp)
+	if err != nil {
+		fmt.Println("Failed to parse timestamp:", err)
+		return timestamp
+	}
+
+	// Load the JST time zone
+	jst, err := time.LoadLocation("Asia/Tokyo")
+	if err != nil {
+		fmt.Println("Failed to load JST time zone:", err)
+		return timestamp
+	}
+
+	// Convert the timestamp to JST
+	jstTime := t.In(jst)
+
+	// Format the JST time as a string
+	jstTimestamp := jstTime.Format(time.RFC3339)
+	return jstTimestamp
+
+}
+
 func (client *Client) SendMessage(data map[string]string) {
 	fmt.Println("get message from msgChan channel")
 	// new message fron front-end
 	// Get the value of the input_message field from the request body
 	chatMsg, ok := data["input_message"]
 	timestamp, ok := data["timestamp"]
+	timestamp = getJSTTimeStamp(timestamp)
 	fmt.Println(timestamp)
 	if !ok {
 		log.Fatal("Missing input_message field in request body", http.StatusBadRequest)
@@ -283,59 +286,7 @@ func (client *Client) SendMessage(data map[string]string) {
 
 func (client *Client) Run() {
 	fmt.Println("Client Running")
-	// ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	// if err != nil {
-	// 	log.Fatal("dial error:", err)
-	// }
-	// fmt.Println("Connection from new user to websocket BUILT")
 
-	// defer ws.Close()
-	// go client.SendMessage(msgChan)
-	// go func() {
-	// 	for data := range msgChan {
-	// 		fmt.Println("get message from msgChan channel")
-	// 		// new message fron front-end
-	// 		// Get the value of the input_message field from the request body
-	// 		chatMsg, ok := data["input_message"]
-	// 		timestamp, ok := data["timestamp"]
-	// 		fmt.Println(timestamp)
-	// 		if !ok {
-	// 			log.Fatal("Missing input_message field in request body", http.StatusBadRequest)
-	// 			return
-	// 		}
-
-	// 		// Do something with the input message, such as send it to other users in the chat
-	// 		fmt.Println("Broadcast message to other users:", chatMsg)
-
-	// 		if len(chatMsg) != 0 {
-	// 			sendMsg := []byte(chatMsg + "\n")
-	// 			_, err := client.conn.Write([]byte(sendMsg))
-	// 			if err != nil {
-	// 				fmt.Println("client conn.write error: ", err)
-	// 			}
-
-	// 		}
-	// 		// INSERT this message to database
-	// 		stmt, err := client_db.Prepare("INSERT INTO chat_logs(user_id, message, timestamp) VALUES(?, ?, ?)")
-	// 		if err != nil {
-	// 			log.Fatal(err)
-	// 		}
-
-	// 		res, err := stmt.Exec(client.user_id, chatMsg, timesStampMySQLFormat(timestamp))
-	// 		if err != nil {
-	// 			log.Fatal(err)
-	// 		}
-
-	// 		// Print the number of rows affected by the insert statement
-	// 		rowsAffected, err := res.RowsAffected()
-	// 		if err != nil {
-	// 			log.Fatal(err)
-	// 		}
-	// 		fmt.Printf("%d row(s) inserted.\n", rowsAffected)
-
-	// 	}
-	// }()
-	// done<-
 	go func() {
 		for {
 			// Read data from client.conn
@@ -355,41 +306,6 @@ func (client *Client) Run() {
 			// }
 		}
 	}()
-	for {
-	}
-	// /*	Code for launch random available port for launching client GUI	*/
-	// // Get a random available port
-	// listener, err := net.Listen("tcp", "127.0.0.1:0")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// port := listener.Addr().(*net.TCPAddr).Port
-	// portAddr := fmt.Sprintf(":%d", port)
-
-	// // Start the server on launched port
-
-	// log.Println("Starting server on port: ", port)
-	// log.Printf("Visit Page on: http://localhost:%d/", port)
-	// err = http.ListenAndServe(portAddr, nil)
-
-	// port := clientPort // clientPort initialized by commandline arugments
-	// log.Println("Starting client on port: ", port)
-	// log.Printf("Visit Page on: http://localhost:%d/", port)
-	// server := &http.Server{
-	// 	Addr:    fmt.Sprintf(":%d", port),
-	// 	Handler: mux,
-	// }
-	// // Start your server
-	// go log.Fatal(server.ListenAndServe())
-	// err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
-
-	// if err != nil {
-	// 	log.Fatal("Failed to start server:", err)
-	// }
-
-	// for {
-	// 	n, err := client.conn.Read(buf)
-	// }
 }
 
 var serverIp string
@@ -424,18 +340,8 @@ func main() {
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: mux,
 	}
-	// Start your server
+	// Start server
 	go log.Fatal(server.ListenAndServe())
-
-	// client := NewClient(serverIp, serverPort)
-	// if client == nil {
-	// 	fmt.Println(">>>>> Link to Server Falied <<<<<")
-	// 	return
-	// }
-
-	// client.Run()
-	// for {
-	// }
 
 }
 
@@ -501,16 +407,6 @@ func chatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// func getMessageChannelFromRequest(remoteAddress string) chan map[string]string {
-// 	// var reqToChanMap map[string](chan map[string]string)
-// 	_, exists := reqToChanMap[remoteAddress]
-// 	if !exists {
-// 		reqToChanMap[remoteAddress] = make(chan map[string]string)
-// 	}
-
-// 	return reqToChanMap[remoteAddress]
-// }
-
 func handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body as JSON
 	fmt.Println("handle send message from:", r.RemoteAddr)
@@ -527,7 +423,11 @@ func handleSendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send data to taget client
-	target_client := OnlineClientrMap[user_id]
+	target_client, exists := OnlineClientrMap[user_id]
+	if !exists {
+		log.Printf("Invalid send message from inactive user")
+		return
+	}
 	target_client.SendMessage(data)
 
 	// Send a response back to the client
