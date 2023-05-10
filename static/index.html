@@ -28,30 +28,6 @@
             color: white;
             border: none;
         }
-        /* Style the chat application home page */
-        #chat-page {
-            display: none;
-        }
-        /* Show the private chat mode when the corresponding radio button is checked */
-        #private-chat {
-            display: none;
-        }
-        #private-chat-label {
-            display: none;
-        }
-        #private-chat-radio:checked + #private-chat-label + #private-chat {
-            display: block;
-        }
-        /* Show the public chat mode when the corresponding radio button is checked */
-        #public-chat {
-            display: none;
-        }
-        #public-chat-label {
-            display: none;
-        }
-        #public-chat-radio:checked + #public-chat-label + #public-chat {
-            display: block;
-        }
     </style>
 </head>
 <body>
@@ -61,25 +37,18 @@
         <input type="password" id="password-input" placeholder="Password">
         <div>
             <a href="register.html">Register</a>
-            <button id="login-button">Login</button>
+            <button type = "submit">Login</button>
         </div>
     </form>
     
     
-    <!-- Chat application home page -->
-    <div id="chat-page">
-      <h1>Welcome to the chat application</h1>
-      <p>Select a chat mode:</p>
-      <a href=".././chat"><img src="grouChat.png" alt="Group Chat" width="150" height="150"></a>
-    </div>
-
     <script>
         // Get the login form and the chat page
         const loginForm = document.getElementById("login-form");
-        const chatPage = document.getElementById("chat-page");
 
         // Add an event listener to the login form to handle form submission
         loginForm.addEventListener('submit', event => {
+            console.log("SUBMIT")
           // Prevent the default form submission behavior
           event.preventDefault();
 
@@ -107,11 +76,17 @@
             })
             .then(data => {
                 console.log('Response:', data);
+                console.log("user id in response data:", data.user_id)
+                    // redirect to chat homepage
+                    localStorage.setItem('userId', data.user_id);
                 // Handle the response from the backend here if necessary
                 if(data.verification == "TRUE") {
                     // Verification succeeded
-                    chatPage.style.display = "block";
                     loginForm.style.display = "none";
+                    console.log("user id in response data:", data.user_id)
+                    // redirect to chat homepage
+                    localStorage.setItem('userId', data.user_id);
+                    window.location.href = '/chat';
                 }else{
                     alert("Either username or password incorrect")
                     return false;
@@ -120,17 +95,6 @@
             .catch(error => {
             console.error(error);
             });
-        });
-
-        // Add event listeners to the radio buttons to switch between chat modes
-        const privateChatRadio = document.getElementById("private-chat-radio");
-        const publicChatRadio = document.getElementById("public-chat-radio");
-        const publicChatBtn = document.getElementById('public-chat-btn');
-
-        // Add a click event listener to the public chat button
-        publicChatBtn.addEventListener('click', function() {
-            // Redirect the user to "/chat.html"
-            window.location.href = '/chat.html';
         });
       </script>
 </body>

@@ -3,6 +3,9 @@ const messageInput = document.getElementById('message-input');
 const chatWindow = document.getElementById('chat-window');
 let lastMessageTime = null;
 
+const userId = localStorage.getItem('userId');
+console.log("user id:", userId); // Output: myValue
+
 // function createBubbleForMessageFromUser(message, user, bubbleOwnerClass, bubbleFromClass){
 //   const bubble = document.createElement('div');
 //   bubble.classList.add('chat-bubble', bubbleOwnerClass, bubbleFromClass);
@@ -14,8 +17,14 @@ let lastMessageTime = null;
 
 // Get the current port number
 var port = window.location.port;
-var wsUrl = "ws://" + window.location.hostname + ":" + port + "/ws";
+var wsUrl = "ws://" + window.location.hostname + ":" + port + "/ws?userId="+userId;
 var socket = new WebSocket(wsUrl);
+
+// // Set the custom header
+// socket.addEventListener('open', function(event) {
+//   // global argument userID
+//   socket.setRequestHeader('X-User-Id', userId);
+// });
 
 
 // Websocket to supervise message from backend
@@ -43,6 +52,7 @@ messageForm.addEventListener('submit', (e) => {
     if (text !== '') {
       const data = {
         input_message: text,
+        user_id: userId,
         timestamp: timestamp
       };
       console.log(data)

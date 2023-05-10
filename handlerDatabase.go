@@ -18,13 +18,13 @@ func checkLogin(db *sql.DB, username, password string) (int, error) {
 	return user_id, nil
 }
 
-func (client *Client) getUserByUsername(username string) (int, error) {
+func getUserByUsername(username string, client_db *sql.DB) (int, error) {
 	var user_id int
-	err := client.db.QueryRow("SELECT user_id FROM users WHERE username = ?", username).Scan(&user_id)
+	err := client_db.QueryRow("SELECT user_id FROM users WHERE username = ?", username).Scan(&user_id)
 	return user_id, err
 }
 
-func (client *Client) insertUser(username string, password string) error {
+func insertUser(username string, password string, client_db *sql.DB) error {
 	/* Insert user into database using username and password*/
 
 	// Generate hash from the password
@@ -35,7 +35,7 @@ func (client *Client) insertUser(username string, password string) error {
 	// }
 
 	// Insert the new user into the database
-	_, err := client.db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, hashedPassword)
+	_, err := client_db.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, hashedPassword)
 	if err != nil {
 		return err
 	}
@@ -49,11 +49,11 @@ type Chatlog struct {
 	Timestamp string
 }
 
-func loadChatLogsFromDatabase(client *Client) struct {
+func loadChatLogsFromDatabase(client_db *sql.DB) struct {
 	Tile     string
 	Chatlogs []Chatlog
 } {
-	db := client.db
+	db := client_db
 	rows, err := db.Query("SELECT username, message, timestamp FROM users u JOIN chat_logs cl ON u.user_id = cl.user_id")
 	if err != nil {
 		log.Fatal(err)

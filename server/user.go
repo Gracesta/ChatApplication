@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"strings"
 )
@@ -25,6 +26,7 @@ func NewUser(conn net.Conn, server *Server) *User {
 	}
 
 	// Once new user built, set a go routine for it to listen message
+	fmt.Println("New user comming in:", user.UserAddr, user.UserName)
 	go user.ListenUserMessage()
 
 	return user
@@ -34,10 +36,9 @@ func NewUser(conn net.Conn, server *Server) *User {
 func (user *User) ListenUserMessage() {
 	// msg format: [user.UserAddr + "|" + user.UserName + "|" + msg]
 	for msg := range user.userChan {
-		// msg := <-user.userChan
 		// Only receive mssages from other users
-		msgOwnerName := strings.Split(msg, "|")[1]
-		if msgOwnerName != user.UserName {
+		msgAddr := strings.Split(msg, "|")[0]
+		if msgAddr != user.UserAddr {
 			user.conn.Write([]byte(msg + "\n"))
 		}
 	}
@@ -55,7 +56,7 @@ func (user *User) Online() {
 	user.server.mapLock.Unlock()
 
 	// Online anouncement for new user
-	user.server.BroadCast(user, "ONLINE")
+	// user.server.BroadCast(user, "ONLINE")
 
 }
 

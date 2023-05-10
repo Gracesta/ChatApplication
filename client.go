@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -17,25 +18,45 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// type Server struct {
+// 	Ip         string
+// 	Port       int
+// 	serverChan chan string
+
+// 	// mapLock and online user map
+// 	OnlineClientrMap map[string]*Client
+// 	mapLock       sync.RWMutex
+// }
+
+var OnlineClientrMap map[int]*Client
+
 var mux = http.NewServeMux()
-var endpointRegistered bool = false
+
+// var msgChan chan map[string]string
+var client_db *sql.DB
+
+// var wsConn *websocket.Conn
+
+// key: request remote address, value: channel to send data
+var reqToChanMap map[string](chan map[string]string) // mapLock      sync.RWMutex
 
 type Client struct {
 	Ip   string
 	Port int
 	Name string
-	flag int
 
-	conn    net.Conn
+	conn    net.Conn        // connection for server
+	wsConn  *websocket.Conn // connection for websocket
 	db      *sql.DB
 	user_id int
+
+	// msgChan *chan map[string]string // meesage channel for message from front-end (AJAX)
 }
 
 func NewClient(ip string, port int) *Client {
 	client := &Client{
 		Ip:   ip,
 		Port: port,
-		flag: 999,
 	}
 
 	// Link to server
@@ -48,38 +69,62 @@ func NewClient(ip string, port int) *Client {
 		return nil
 	}
 	client.conn = conn
+	// msgChan = make(chan map[string]string)
+	// client.msgChan = &msgChan
 
 	return client
 }
 
-func (client *Client) handleWebSocket(w http.ResponseWriter, r *http.Request) {
+func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	// Upgrade HTTP request to WebSocket
-	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
+	fmt.Println("handlewebsocket handler from:", r.RemoteAddr)
+	fmt.Println(r.URL)
+	wsConn, err := websocket.Upgrade(w, r, nil, 1024, 1024)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	// Loop to read data from client.conn and send to frontend
-	for {
-		// Read data from client.conn
-		buf := make([]byte, 1024)
-		n, err := client.conn.Read(buf)
-		if err != nil {
-			break
-		}
-		msg := string(buf[:n])
-		fmt.Println("Receive Message in websocket from user conn:", msg)
-
-		// Send data to frontend over WebSocket
-		if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
-			break
-		}
+	params := r.URL.Query()
+	fmt.Println(params)
+	user_id_string := params.Get("userId")
+	fmt.Println("Connection from new user to websocket BUILT, user_id:", user_id_string)
+	user_id, err := strconv.Atoi(user_id_string)
+	if err != nil {
+		log.Fatal("error in converting string to int in handlwebsocket")
 	}
-	// Close WebSocket connection
-	ws.Close()
+	OnlineClientrMap[user_id].wsConn = wsConn
+	fmt.Println(OnlineClientrMap[user_id])
+	// user_id, err := strconv.Atoi(r.Header.Get("X-User-Id"))
+	// fmt.Println(user_id)
+	// if err != nil {
+	// 	log.Fatal("string convertion error in websocket")
+	// }
+	// OnlineClientrMap[user_id].wsConn = wsConn
+	// defer wsConn.Close()
+	// Loop to read data from client.conn and send to frontend
+	// for {
+	// 	// Read data from client.conn
+	// 	buf := make([]byte, 1024)
+	// 	n, err := client.conn.Read(buf)
+	// 	if err != nil {
+	// 		break
+	// 	}
+	// 	msg := string(buf[:n])
+	// 	fmt.Println("Receive Message in websocket from user conn:", msg)
+
+	// 		// Send data to frontend over WebSocket
+	// 		if err := ws.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
+	// 			break
+	// 		}
+	// 	}
+	// 	// Close WebSocket connection
+	// 	ws.Close()
+	for {
+
+	}
 }
-func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
+func loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("loginHandler")
 	var data map[string]string
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
@@ -90,6 +135,7 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 
 	username, ok := data["username"]
 	password, ok := data["password"]
+	fmt.Println(username, password)
 	if !ok {
 		http.Error(w, "Missing input_message field in request body", http.StatusBadRequest)
 		return
@@ -97,7 +143,7 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 	var user_id int
 
 	// checkLogin function will return 'user_id' and 'error'
-	user_id, err = checkLogin(client.db, username, password)
+	user_id, err = checkLogin(client_db, username, password)
 	if err != nil {
 		fmt.Println("Failed to login with database: %v", err)
 	}
@@ -106,37 +152,25 @@ func (client *Client) loginVerificationHandler(w http.ResponseWriter, r *http.Re
 	var verf string
 
 	if user_id != 0 {
+		// launch websocket and handleSendMessage here?
+		client := NewClient(serverIp, serverPort)
+		fmt.Println(">>>>> Link to Server Succedded <<<<<")
+
 		client.user_id = user_id
 		client.Name = username
 		client.UpdateName() // retrieve username to server from database
+
+		OnlineClientrMap[user_id] = client
 		fmt.Println("Login succeeded, user_id is:", user_id)
 		verf = "TRUE"
+		go client.Run()
 
-		fmt.Println("User mux:", mux)
-
-		// chat application homepage
-		if !endpointRegistered {
-			go mux.HandleFunc("/chat", client.chatHandler)
-
-			// WebSocket endpoint for the chat messages
-			go mux.HandleFunc("/ws", client.handleWebSocket)
-
-			// send message
-			go mux.HandleFunc("/send-message", client.handleSendMessage)
-			endpointRegistered = true
-		}
-		// server := &http.Server{
-		// 	Addr:    ":2222",
-		// 	Handler: mux,
-		// }
-		// // Start your server
-		// log.Fatal(server.ListenAndServe())
 	} else {
 		verf = "FALSE"
 	}
 
 	// Send a response back to the client
-	response := map[string]string{"status": "ok", "verification": verf}
+	response := map[string]string{"status": "ok", "verification": verf, "user_id": strconv.Itoa(user_id)}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
@@ -151,7 +185,7 @@ type RegisterRequest struct {
 	Password string `json:"password"`
 }
 
-func (client *Client) registerHandler(w http.ResponseWriter, r *http.Request) {
+func registerHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the request body into a RegisterRequest struct
 	fmt.Println("registerHandler")
 	var req RegisterRequest
@@ -173,7 +207,7 @@ func (client *Client) registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if the username already exists in the database
-	user_id, err := client.getUserByUsername(req.Username) // user_id =
+	user_id, err := getUserByUsername(req.Username, client_db) // user_id =
 	fmt.Println("Userid:", user_id)
 	if err != nil && err != sql.ErrNoRows {
 		fmt.Println(err)
@@ -186,7 +220,7 @@ func (client *Client) registerHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Insert the new user into the database
-	err = client.insertUser(req.Username, req.Password)
+	err = insertUser(req.Username, req.Password, client_db)
 	if err != nil {
 		fmt.Println(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -198,11 +232,214 @@ func (client *Client) registerHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(resp)
 }
 
-func (client *Client) Run() {
+func (client *Client) RetrieveMessage(msgByte []byte) {
+	if err := client.wsConn.WriteMessage(websocket.TextMessage, msgByte); err != nil {
+		fmt.Println("wsconn write error", err)
+	}
+}
 
-	// Serve static files on website
+func (client *Client) SendMessage(data map[string]string) {
+	fmt.Println("get message from msgChan channel")
+	// new message fron front-end
+	// Get the value of the input_message field from the request body
+	chatMsg, ok := data["input_message"]
+	timestamp, ok := data["timestamp"]
+	fmt.Println(timestamp)
+	if !ok {
+		log.Fatal("Missing input_message field in request body", http.StatusBadRequest)
+		return
+	}
+
+	// Do something with the input message, such as send it to other users in the chat
+	fmt.Println("Broadcast message to other users:", chatMsg)
+
+	if len(chatMsg) != 0 {
+		sendMsg := []byte(chatMsg + "\n")
+		_, err := client.conn.Write([]byte(sendMsg))
+		if err != nil {
+			fmt.Println("client conn.write error: ", err)
+		}
+
+	}
+	// INSERT this message to database
+	stmt, err := client_db.Prepare("INSERT INTO chat_logs(user_id, message, timestamp) VALUES(?, ?, ?)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res, err := stmt.Exec(client.user_id, chatMsg, timesStampMySQLFormat(timestamp))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Print the number of rows affected by the insert statement
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%d row(s) inserted.\n", rowsAffected)
+
+}
+
+func (client *Client) Run() {
+	fmt.Println("Client Running")
+	// ws, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	// if err != nil {
+	// 	log.Fatal("dial error:", err)
+	// }
+	// fmt.Println("Connection from new user to websocket BUILT")
+
+	// defer ws.Close()
+	// go client.SendMessage(msgChan)
+	// go func() {
+	// 	for data := range msgChan {
+	// 		fmt.Println("get message from msgChan channel")
+	// 		// new message fron front-end
+	// 		// Get the value of the input_message field from the request body
+	// 		chatMsg, ok := data["input_message"]
+	// 		timestamp, ok := data["timestamp"]
+	// 		fmt.Println(timestamp)
+	// 		if !ok {
+	// 			log.Fatal("Missing input_message field in request body", http.StatusBadRequest)
+	// 			return
+	// 		}
+
+	// 		// Do something with the input message, such as send it to other users in the chat
+	// 		fmt.Println("Broadcast message to other users:", chatMsg)
+
+	// 		if len(chatMsg) != 0 {
+	// 			sendMsg := []byte(chatMsg + "\n")
+	// 			_, err := client.conn.Write([]byte(sendMsg))
+	// 			if err != nil {
+	// 				fmt.Println("client conn.write error: ", err)
+	// 			}
+
+	// 		}
+	// 		// INSERT this message to database
+	// 		stmt, err := client_db.Prepare("INSERT INTO chat_logs(user_id, message, timestamp) VALUES(?, ?, ?)")
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		}
+
+	// 		res, err := stmt.Exec(client.user_id, chatMsg, timesStampMySQLFormat(timestamp))
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		}
+
+	// 		// Print the number of rows affected by the insert statement
+	// 		rowsAffected, err := res.RowsAffected()
+	// 		if err != nil {
+	// 			log.Fatal(err)
+	// 		}
+	// 		fmt.Printf("%d row(s) inserted.\n", rowsAffected)
+
+	// 	}
+	// }()
+	// done<-
+	go func() {
+		for {
+			// Read data from client.conn
+			buf := make([]byte, 1024)
+			n, err := client.conn.Read(buf)
+			if err != nil {
+				break
+			}
+			msg := string(buf[:n])
+			fmt.Println("Receive Message in websocket from user conn and try to write it to wsConn:", msg)
+
+			// Send data to frontend over WebSocket
+			client.RetrieveMessage(buf[:n])
+			// if err := client.wsConn.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
+			// 	fmt.Println("wsconn write error", err)
+			// 	break
+			// }
+		}
+	}()
+	for {
+	}
+	// /*	Code for launch random available port for launching client GUI	*/
+	// // Get a random available port
+	// listener, err := net.Listen("tcp", "127.0.0.1:0")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// port := listener.Addr().(*net.TCPAddr).Port
+	// portAddr := fmt.Sprintf(":%d", port)
+
+	// // Start the server on launched port
+
+	// log.Println("Starting server on port: ", port)
+	// log.Printf("Visit Page on: http://localhost:%d/", port)
+	// err = http.ListenAndServe(portAddr, nil)
+
+	// port := clientPort // clientPort initialized by commandline arugments
+	// log.Println("Starting client on port: ", port)
+	// log.Printf("Visit Page on: http://localhost:%d/", port)
+	// server := &http.Server{
+	// 	Addr:    fmt.Sprintf(":%d", port),
+	// 	Handler: mux,
+	// }
+	// // Start your server
+	// go log.Fatal(server.ListenAndServe())
+	// err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+
+	// if err != nil {
+	// 	log.Fatal("Failed to start server:", err)
+	// }
+
+	// for {
+	// 	n, err := client.conn.Read(buf)
+	// }
+}
+
+var serverIp string
+var serverPort int
+var clientPort int
+
+func init() {
+	flag.StringVar(&serverIp, "ip", "127.0.0.1", "Server IP")
+	flag.IntVar(&serverPort, "port", 8888, "Server Port")
+	flag.IntVar(&clientPort, "client_port", 9999, "Client Port")
+}
+
+func main() {
+	// command line parse
+	flag.Parse()
+
+	OnlineClientrMap = make(map[int]*Client)
+	go launchDatabase()
+	// Here for login process
+
 	go mux.Handle("/", http.FileServer(http.Dir("static")))
-	go mux.HandleFunc("/register", client.registerHandler)
+	go mux.HandleFunc("/ws", handleWebSocket)
+	go mux.HandleFunc("/register", registerHandler)
+	go mux.HandleFunc("/chat", chatHandler)
+	go mux.HandleFunc("/login-verif", loginVerificationHandler)
+	go mux.HandleFunc("/send-message", handleSendMessage)
+
+	port := clientPort // clientPort initialized by commandline arugments
+	log.Println("Starting client on port: ", port)
+	log.Printf("Visit Page on: http://localhost:%d/", port)
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: mux,
+	}
+	// Start your server
+	go log.Fatal(server.ListenAndServe())
+
+	// client := NewClient(serverIp, serverPort)
+	// if client == nil {
+	// 	fmt.Println(">>>>> Link to Server Falied <<<<<")
+	// 	return
+	// }
+
+	// client.Run()
+	// for {
+	// }
+
+}
+
+func launchDatabase() {
 	// launch database for client
 	type Config struct {
 		Database struct {
@@ -244,78 +481,18 @@ func (client *Client) Run() {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(5)
 
-	client.db = db
+	client_db = db
 
 	log.Println("Database launched", db)
-
-	// Here for login process
-	go mux.HandleFunc("/login-verif", client.loginVerificationHandler)
-
-	// /*	Code for launch random available port for launching client GUI	*/
-	// // Get a random available port
-	// listener, err := net.Listen("tcp", "127.0.0.1:0")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// port := listener.Addr().(*net.TCPAddr).Port
-	// portAddr := fmt.Sprintf(":%d", port)
-
-	// // Start the server on launched port
-
-	// log.Println("Starting server on port: ", port)
-	// log.Printf("Visit Page on: http://localhost:%d/", port)
-	// err = http.ListenAndServe(portAddr, nil)
-
-	port := clientPort // clientPort initialized by commandline arugments
-	log.Println("Starting client on port: ", port)
-	log.Printf("Visit Page on: http://localhost:%d/", port)
-	server := &http.Server{
-		Addr:    fmt.Sprintf(":%d", port),
-		Handler: mux,
-	}
-	// Start your server
-	go log.Fatal(server.ListenAndServe())
-	// err = http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
-
-	// if err != nil {
-	// 	log.Fatal("Failed to start server:", err)
-	// }
-
 	for {
 
 	}
 }
 
-var serverIp string
-var serverPort int
-var clientPort int
-
-func init() {
-	flag.StringVar(&serverIp, "ip", "127.0.0.1", "Server IP")
-	flag.IntVar(&serverPort, "port", 8888, "Server Port")
-	flag.IntVar(&clientPort, "client_port", 9999, "Client Port")
-}
-
-func main() {
-	// command line parse
-	flag.Parse()
-
-	client := NewClient(serverIp, serverPort)
-	if client == nil {
-		fmt.Println(">>>>> Link to Server Falied <<<<<")
-		return
-	}
-
-	fmt.Println(">>>>> Link to Server Succedded <<<<<")
-
-	client.Run()
-
-}
-
-func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
+func chatHandler(w http.ResponseWriter, r *http.Request) {
 	// Compile the chat template
 	tmpl := template.Must(template.ParseFiles("./static/chat.html"))
-	data := loadChatLogsFromDatabase(client)
+	data := loadChatLogsFromDatabase(client_db)
 
 	err := tmpl.Execute(w, data)
 	if err != nil {
@@ -324,52 +501,34 @@ func (client *Client) chatHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (client *Client) handleSendMessage(w http.ResponseWriter, r *http.Request) {
-	// Parse the request body as JSON
-	fmt.Println("client.handle send message:")
+// func getMessageChannelFromRequest(remoteAddress string) chan map[string]string {
+// 	// var reqToChanMap map[string](chan map[string]string)
+// 	_, exists := reqToChanMap[remoteAddress]
+// 	if !exists {
+// 		reqToChanMap[remoteAddress] = make(chan map[string]string)
+// 	}
 
+// 	return reqToChanMap[remoteAddress]
+// }
+
+func handleSendMessage(w http.ResponseWriter, r *http.Request) {
+	// Parse the request body as JSON
+	fmt.Println("handle send message from:", r.RemoteAddr)
 	var data map[string]string
 	err := json.NewDecoder(r.Body).Decode(&data)
+	//data fields: input_message, user_id, timestamp
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// Get the value of the input_message field from the request body
-	chatMsg, ok := data["input_message"]
-	timestamp, ok := data["timestamp"]
-	fmt.Println(timestamp)
-	if !ok {
-		http.Error(w, "Missing input_message field in request body", http.StatusBadRequest)
-		return
-	}
-
-	// Do something with the input message, such as send it to other users in the chat
-	fmt.Println("Broadcast message to other users:", chatMsg)
-	if len(chatMsg) != 0 {
-		sendMsg := []byte(chatMsg + "\n")
-		_, err := client.conn.Write([]byte(sendMsg))
-		if err != nil {
-			fmt.Println("client conn.write error: ", err)
-		}
-
-	}
-	// INSERT this message to database
-	stmt, err := client.db.Prepare("INSERT INTO chat_logs(user_id, message, timestamp) VALUES(?, ?, ?)")
+	user_id, err := strconv.Atoi(data["user_id"])
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("string convertion error in handle send message")
 	}
 
-	res, err := stmt.Exec(client.user_id, chatMsg, timesStampMySQLFormat(timestamp))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Print the number of rows affected by the insert statement
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("%d row(s) inserted.\n", rowsAffected)
+	// send data to taget client
+	target_client := OnlineClientrMap[user_id]
+	target_client.SendMessage(data)
 
 	// Send a response back to the client
 	message_backend := "From backend"
