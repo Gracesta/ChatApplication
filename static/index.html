@@ -55,7 +55,7 @@
           // Get the username and password from the form
           const username = loginForm.elements["username-input"].value;
           const password = loginForm.elements["password-input"].value;
-
+          let Loggined = false
           const data = {
             username: username,
             password: password
@@ -82,11 +82,12 @@
                 // Handle the response from the backend here if necessary
                 if(data.verification == "TRUE") {
                     // Verification succeeded
-                    loginForm.style.display = "none";
+                    // loginForm.style.display = "none";
                     console.log("user id in response data:", data.user_id)
                     // redirect to chat homepage
                     localStorage.setItem('userId', data.user_id);
-                    window.location.href = '/chat';
+                    
+                    window.location.href = '/chat?userId=' + localStorage.getItem('userId');
                 }else{
                     alert("Either username or password incorrect")
                     return false;

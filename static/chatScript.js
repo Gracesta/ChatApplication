@@ -10,10 +10,23 @@ console.log("user id:", userId); // Output: myValue
 chatWindow.scrollTop = chatWindow.scrollHeight;
 
 if (!userId) {
+  console.log("UserId is None")
   // User is not logged in, redirect to login page
   window.history.replaceState(null, null, "/");
   window.location.href = "/";
 }else{
+  // Send user_id to back-end for recovering chat logs
+  const chat_URL =  "/chat?userId=" + userId
+  console.log(chat_URL)
+  fetch(chat_URL)
+  .then(response => {
+    console.log(response)
+  })
+  .catch(error => {
+    console.log(error)
+  });
+
+
   // set up websocket connection for authenticated user
   // Get the current port number
   var port = window.location.port;

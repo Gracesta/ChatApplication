@@ -76,7 +76,6 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	params := r.URL.Query()
-	fmt.Println(params)
 	user_id_string := params.Get("userId")
 	fmt.Println("Connection from new user to websocket BUILT, user_id:", user_id_string)
 	user_id, err := strconv.Atoi(user_id_string)
@@ -146,9 +145,10 @@ func loginVerificationHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		verf = "FALSE"
 	}
+	user_id_string := strconv.Itoa(user_id)
 
 	// Send a response back to the client
-	response := map[string]string{"status": "ok", "verification": verf, "user_id": strconv.Itoa(user_id)}
+	response := map[string]string{"status": "ok", "verification": verf, "user_id": user_id_string}
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
@@ -211,8 +211,10 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (client *Client) RetrieveMessage(msgByte []byte) {
-	if err := client.wsConn.WriteMessage(websocket.TextMessage, msgByte); err != nil {
-		fmt.Println("wsconn write error", err)
+	if client.wsConn != nil {
+		if err := client.wsConn.WriteMessage(websocket.TextMessage, msgByte); err != nil {
+			fmt.Println("wsconn write error", err)
+		}
 	}
 }
 
@@ -284,6 +286,14 @@ func (client *Client) SendMessage(data map[string]string) {
 
 }
 
+func (client *Client) Offline() {
+	// New user added to online user map
+	log.Printf("user ", client.user_id, " is offline, recyle resources")
+	clientMutex.Lock()
+	delete(OnlineClientrMap, client.user_id)
+	clientMutex.Unlock()
+}
+
 func (client *Client) Run() {
 	fmt.Println("Client Running")
 
@@ -292,18 +302,18 @@ func (client *Client) Run() {
 			// Read data from client.conn
 			buf := make([]byte, 1024)
 			n, err := client.conn.Read(buf)
+			if n == 0 { // client closed
+				client.Offline()
+				return
+			}
 			if err != nil {
-				break
+				return
 			}
 			msg := string(buf[:n])
 			fmt.Println("Receive Message in websocket from user conn and try to write it to wsConn:", msg)
 
 			// Send data to frontend over WebSocket
 			client.RetrieveMessage(buf[:n])
-			// if err := client.wsConn.WriteMessage(websocket.TextMessage, buf[:n]); err != nil {
-			// 	fmt.Println("wsconn write error", err)
-			// 	break
-			// }
 		}
 	}()
 }
@@ -397,9 +407,19 @@ func launchDatabase() {
 
 func chatHandler(w http.ResponseWriter, r *http.Request) {
 	// Compile the chat template
-	tmpl := template.Must(template.ParseFiles("./static/chat.html"))
-	data := loadChatLogsFromDatabase(client_db)
+	fmt.Println("chatHandler")
+	user_id := r.URL.Query().Get("userId")
 
+	user_id_int, errStr := strconv.Atoi(user_id)
+	if errStr != nil {
+		log.Println("string Atoi Errorin chat Handler one:", errStr)
+		return
+	}
+	print("CLIENTUSER_ID:", user_id)
+	tmpl := template.Must(template.ParseFiles("./static/chat.html"))
+	data := loadChatLogsFromDatabase(client_db, user_id_int) // give user_id here
+	// fmt.Println(data.Chatlogs[len(data.Chatlogs)-1].Bubbleproperty)
+	// fmt.Println(data)
 	err := tmpl.Execute(w, data)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -442,7 +462,6 @@ func handleSendMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (client *Client) UpdateName() bool {
-
 	sendMsg := "rename|" + client.Name + "\n"
 	_, err := client.conn.Write([]byte(sendMsg))
 	if err != nil {

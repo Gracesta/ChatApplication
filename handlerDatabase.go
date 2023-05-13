@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 	"time"
 )
@@ -44,21 +45,23 @@ func insertUser(username string, password string, client_db *sql.DB) error {
 }
 
 type Chatlog struct {
-	Username  string
-	Content   string
-	Timestamp string
+	Username       string
+	Content        string
+	Timestamp      string
+	Bubbleproperty string
 }
 
-func loadChatLogsFromDatabase(client_db *sql.DB) struct {
+func loadChatLogsFromDatabase(client_db *sql.DB, server_user_id int) struct {
 	Tile     string
 	Chatlogs []Chatlog
 } {
+	client_user_id := server_user_id
+	fmt.Println("CLIENT USER ID:", client_user_id)
 	db := client_db
-	rows, err := db.Query("SELECT username, message, timestamp FROM users u JOIN chat_logs cl ON u.user_id = cl.user_id ORDER BY cl.timestamp")
+	rows, err := db.Query("SELECT username, message, timestamp, u.user_id FROM users u JOIN chat_logs cl ON u.user_id = cl.user_id ORDER BY cl.timestamp")
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer rows.Close()
 	data := struct {
 		Tile     string
@@ -66,16 +69,25 @@ func loadChatLogsFromDatabase(client_db *sql.DB) struct {
 	}{}
 
 	for rows.Next() {
-		var username, chatlog, timestamp string
-		err := rows.Scan(&username, &chatlog, &timestamp)
+		var username, chatlog, timestamp, bubbleproperty string
+		var user_id int
+		err := rows.Scan(&username, &chatlog, &timestamp, &user_id)
 
+		if user_id == client_user_id {
+			bubbleproperty = "you-bubble outgoing-bubble"
+		} else {
+			bubbleproperty = "other-bubble incoming-bubble"
+		}
+		// fmt.Println(bubbleproperty)
 		// Check for errors when scanning the query results
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		data.Chatlogs = append(data.Chatlogs, Chatlog{Username: username, Content: chatlog, Timestamp: timestamp})
+		data.Chatlogs = append(data.Chatlogs, Chatlog{Username: username, Content: chatlog, Timestamp: timestamp, Bubbleproperty: bubbleproperty})
 	}
+	fmt.Println(data.Chatlogs[len(data.Chatlogs)-1].Bubbleproperty)
+
+	fmt.Println("OUT data.BubbleProperty:", data.Chatlogs[len(data.Chatlogs)-1].Bubbleproperty)
 	return data
 }
 

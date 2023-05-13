@@ -128,11 +128,9 @@
 			{{range .Chatlogs}}
 				<div class="system-bubble">
 					<p>{{.Timestamp}}</p>
-					<!-- {{.Username}} said "{{.Content}}" at {{.Timestamp}} -->
 				</div>
-				<div class="chat-bubble you-bubble incoming-bubble">
+				<div class="chat-bubble {{.Bubbleproperty}}">
 					<p><strong>{{.Username}}</strong></p><p>{{.Content}}</p>
-					<!-- {{.Username}} said "{{.Content}}" at {{.Timestamp}} -->
 				</div>
 			{{end}}
 		</div>
